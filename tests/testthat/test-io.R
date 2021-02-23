@@ -118,3 +118,4 @@ test_that("Loading Juicer-dumped file must have exactly one chrom", {
   expect_error(load_juicer_dump(here(example_dump_path), chrom = NULL))
   expect_error(load_juicer_dump(here(example_dump_path), chrom = c("21", "22")))
 })
+

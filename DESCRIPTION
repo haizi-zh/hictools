@@ -4,7 +4,7 @@ Version: 0.0.1
 Authors@R: 
     person(given = "Haizi",
            family = "Zheng",
-           role = "aut",
+           role = c("aut", "cre"),
            email = "haizi.zh@gmail.com",
            comment = c(ORCID = "0000-0001-6165-0179"))
 Description: What the package does (one paragraph).
