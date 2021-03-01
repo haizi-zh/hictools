@@ -110,6 +110,8 @@ load_juicer_short <- function(file_path, chrom = NULL, matrix = "unknown", norm 
 
   if (!is.null(chrom)) {
     data %<>% filter(chrom1 %in% chrom & chrom2 %in% chrom)
+  } else {
+    chrom <- c(data$chrom1, data$chrom2) %>% unique()
   }
 
   attr(data, "resol") <- guess_resol(data)
@@ -151,6 +153,8 @@ load_hic_genbed <- function(file_path, chrom = NULL, matrix = "unknown", norm = 
 
   if (!is.null(chrom)) {
     data %<>% filter(chrom1 %in% chrom & chrom2 %in% chrom)
+  } else {
+    chrom <- c(data$chrom1, data$chrom2) %>% unique()
   }
 
   attr(data, "resol") <- guess_resol(data)
@@ -245,6 +249,8 @@ load_hic_cool <- function(file_path, chrom = NULL, matrix = "unknown", norm = "u
 
   if (!is.null(chrom)) {
     observed %<>% filter(chrom1 %in% chrom & chrom2 %in% chrom)
+  } else {
+    chrom <- c(observed$chrom1, observed$chrom2) %>% unique()
   }
 
   attr(observed, "resol") <- guess_resol(observed)

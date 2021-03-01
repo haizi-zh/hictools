@@ -47,7 +47,7 @@ strat_dist <-
         mutate(dist = abs(pos1 - pos2)) %>%
         group_by(dist) %>%
         summarize(
-          avg = mean(score, na.rm = TRUE),
+          # avg = mean(score, na.rm = TRUE),
           total = sum(score, na.rm = TRUE),
           nonzero = sum(score > 0)
         ) %>%
@@ -78,16 +78,16 @@ strat_dist <-
                 break
               }
             }
-            # browser()
             row$total <-
               sum(expanded$total) / sum(expanded$nonzero) * row$nonzero
-            row$avg <- row$total / row$nonzero
+            # row$avg <- row$total / row$nonzero
             row
           })
         strat_data <- bind_rows(strat_smoothed, strat_large)
       }
       strat_data %>% mutate(chrom = chrom) %>% select(chrom, everything())
-    })
+    }) %>%
+      arrange(chrom, dist)
   }
 
 

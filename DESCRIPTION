@@ -14,18 +14,21 @@ LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.1
 Imports: 
-    dplyr,
-    readr,
-    tidyr,
-    magrittr,
-    stringr,
-    strawr,
-    bioessentials,
+    tidyverse,
+    here,
+    strawr (>= 0.0.2.1),
     purrr,
     ggplot2,
+    bioessentials (>= 0.1.0),
     rhdf5
 Depends: 
-    R (>= 2.10), strawr (== 0.0.2-1)
+    R (>= 2.10)
 Suggests: 
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    logging,
+    here
 Config/testthat/edition: 3
+Remotes: 
+    haizi-zh/straw/R,
+    haizi-zh/bioessentials,
+    bioc::rhdf5

@@ -98,6 +98,23 @@ test_that("Loading .short/.cool/GENBED file for multiple chromosome works", {
     expect_equal(sd(hic$score), 3826.457, tolerance = 0.001)
     expect_equal(attr(hic, "chrom"), c("21", "22"))
   }
+
+  chrom <- NULL
+  hic_list <- list(
+    load_juicer_short(here(example_short_path), chrom = chrom, matrix = "observed", norm = "NONE"),
+    load_hic_genbed(here(example_bed_path), chrom = chrom, matrix = "observed", norm = "NONE"),
+    load_hic_cool(here(example_cool_path), chrom = chrom, matrix = "observed", norm = "NONE")
+  )
+  for (hic in hic_list) {
+    expect_true(check_valid_hic(hic))
+    expect_identical(attr(hic, "resol"), 500e3L)
+    expect_equal(attr(hic, "type"), "observed")
+    expect_equal(attr(hic, "norm"), "NONE")
+    expect_equal(nrow(hic), 12539L)
+    expect_equal(sum(hic$score), 9624997)
+    expect_equal(sd(hic$score), 3430.272, tolerance = 0.001)
+    expect_equal(attr(hic, "chrom"), c("20", "21", "22"))
+  }
 })
 
 
