@@ -9,7 +9,8 @@ compartment_juicer(
   juicertools,
   java = "java",
   norm = "NONE",
-  resol = NULL
+  resol = NULL,
+  standard = NULL
 )
 }
 \description{

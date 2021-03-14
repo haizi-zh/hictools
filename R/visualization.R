@@ -28,6 +28,7 @@ plot_compartment <-
 #' Visualize Hi-C data
 #'
 #' Show a heatmap of the Hi-C data
+#' @export
 plot_hic_matrix <- function(hic_matrix,
                             chrom,
                             control_hic_matrix = NULL,

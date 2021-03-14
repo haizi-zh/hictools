@@ -19,7 +19,7 @@ Imports:
     strawr (>= 0.0.2.1),
     purrr,
     ggplot2,
-    bioessentials (>= 0.1.0),
+    bioessentials (>= 0.1.1),
     rhdf5
 Depends: 
     R (>= 2.10)

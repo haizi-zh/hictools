@@ -133,6 +133,7 @@ get_possible_dist <-
            genome_wide = FALSE,
            chrom = NULL,
            ref_genome = "hg19") {
+    data("chrom_sizes", package = "hictools")
     chrom_sizes %<>%
       filter(ref_genome == !!ref_genome) %>%
       mutate(n_bins = (size %/% resol) + 1)
@@ -260,7 +261,9 @@ compartment_juicer <-
            juicertools,
            java = "java",
            norm = "NONE",
-           resol = NULL) {
+           resol = NULL,
+           standard = NULL
+           ) {
     if (is.null(resol)) {
       resol = attr(hic_matrix, "resol")
     }
@@ -307,7 +310,11 @@ compartment_juicer <-
     })
 
     unlink(hic_file)
-    comps
+
+    if (is.null(standard))
+      comps
+    else
+      comps %>% flip_compartment(standard = standard)
   }
 
 
@@ -379,6 +386,7 @@ compartment_ht <-
            method = "lieberman",
            matrix = "observed",
            npc = 2,
+           standard = NULL,
            ...) {
     stopifnot(matrix %in% c("observed", "oe"))
     # stopifnot(method %in% c("juicer", "pca"))
@@ -390,7 +398,7 @@ compartment_ht <-
       hic_matrix <- oe_ht(hic_matrix, method = method, ...)
     }
 
-    chroms %>% map_dfr(function(chrom) {
+    comps <- chroms %>% map_dfr(function(chrom) {
       # hic_matrix %<>%
       #   filter(chrom1 == chrom & chrom2 == chrom) %>%
       #   mutate(x = pos1 %/% resol + 1,
@@ -440,7 +448,34 @@ compartment_ht <-
         mutate(score = PC1) %>%
         select(chrom, start, end, score, everything())
     })
+
+    if (is.null(standard))
+      comps
+    else
+      comps %>% flip_compartment(standard = standard)
   }
+
+
+flip_compartment <- function(compartment, standard) {
+  colnames(standard)[4] <- "score"
+  standard %<>% select(chrom:score)
+
+  unique(compartment$chrom) %>%
+    map_dfr(function(chrom) {
+      compartment %<>% filter(chrom == !!chrom)
+      standard %<>% filter(chrom == !!chrom)
+      joined <- inner_join(
+        x = compartment,
+        y = standard,
+        by = c("chrom", "start", "end")
+      ) %>% na.omit()
+      correlation <- with(joined, cor(score.x, score.y))
+      if (correlation > 0)
+        compartment
+      else
+        compartment %>% mutate(score = -score)
+    })
+}
 
 
 #' Run hicPCA
