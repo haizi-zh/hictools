@@ -1,6 +1,6 @@
 Package: hictools
 Title: Home-made handy tools for Hi-C
-Version: 0.0.1
+Version: 0.1.1
 Authors@R: 
     person(given = "Haizi",
            family = "Zheng",
@@ -19,7 +19,7 @@ Imports:
     strawr (>= 0.0.2.1),
     purrr,
     ggplot2,
-    bioessentials (>= 0.1.1),
+    bioessentials (>= 0.1.2),
     rhdf5
 Depends: 
     R (>= 2.10)

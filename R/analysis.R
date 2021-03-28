@@ -255,39 +255,58 @@ oe_ht <- function(hic_matrix,
 
 #' Calculate compartment scores using Juicer tools
 #'
+#' @param hic_matrix Either a `hic_matrix` object, or the path of the `.hic`
+#'   name. If a file path, `resol` cannot be NULL since we can't infer
+#'   resolution directly from the `.hic` file.
+#' @param chrom A character vector indicating which chromosomes to run. If
+#'   `NULL`, will calculate compartment scores for all chromosomes. However, in
+#'   this case, `hic_matrx` cannot be the `.hic` file name.
 #' @export
 compartment_juicer <-
   function(hic_matrix,
-           juicertools,
+           juicertools = NULL,
            java = "java",
            norm = "NONE",
+           chrom = NULL,
            resol = NULL,
            standard = NULL
            ) {
-    if (is.null(resol)) {
-      resol = attr(hic_matrix, "resol")
+    if (is.null(juicertools))
+      juicertools = system.file("extdata", "juicer_tools_1.22.01.jar", package = "hictools")
+
+    if (is.character(hic_matrix)) {
+      assertthat::assert_that(!is.null(chrom))
+      assertthat::assert_that(!is.null(resol))
+      resol <- as.integer(resol)
+      hic_file <- hic_matrix
+    } else {
+      if (is.null(resol)) {
+        resol = attr(hic_matrix, "resol")
+      }
+      if (is.null(chrom))
+        chrom <- unique(c(hic_matrix$chrom1, hic_matrix$chrom2))
+
+      # Dump the matrix to .hic
+      hic_file <- tempfile(fileext = ".hic")
+      on.exit(file.remove(hic_file), add = TRUE)
+
+      hic_matrix %>% dump_hic(
+        file_path = hic_file,
+        format = "juicer_hic",
+        juicertools = juicertools,
+        java = java
+      )
     }
-    chroms <- unique(c(hic_matrix$chrom1, hic_matrix$chrom2))
 
-    # Dump the matrix to .hic
-    hic_file <- tempfile(fileext = ".hic")
-    hic_matrix %>% dump_hic(
-      file_path = hic_file,
-      format = "juicer_hic",
-      juicertools = juicertools,
-      java = java
-    )
-
-    comps <- chroms %>% map_dfr(function(chrom) {
+    comps <- chrom %>% map_dfr(function(chrom) {
       ev_file <- tempfile()
+      on.exit(file.remove(ev_file), add = TRUE)
       cmd <-
         str_interp(
           "${java} -jar ${juicertools} eigenvector ${norm} ${hic_file} ${chrom} BP ${resol} ${ev_file}"
         )
       retcode <- system(cmd)
       if (retcode != 0) {
-        unlink(hic_file)
-        unlink(ev_file)
         stop(str_interp(
           "Error in compartment calculation , RET: ${retcode}, CMD: ${cmd}"
         ))
@@ -305,16 +324,13 @@ compartment_juicer <-
           end = start + resol
         ) %>%
         select(chrom, start, end, score)
-      unlink(ev_file)
       comps
     })
-
-    unlink(hic_file)
 
     if (is.null(standard))
       comps
     else
-      comps %>% flip_compartment(standard = standard)
+      comps %>% flip_compartment(standard = standard, resol = resol)
   }
 
 
@@ -333,6 +349,7 @@ pearson_juicer <-
 
     temp_hic <- tempfile(fileext = ".hic")
     temp_matrix <- tempfile(fileext = ".txt")
+    on.exit(file.remove(c(temp_hic, temp_matrix)))
     tryCatch({
       dump_juicer_hic(
         hic_matrix = hic_matrix,
@@ -360,7 +377,6 @@ pearson_juicer <-
 
       mat %>% convert_matrix_hic(chrom = chrom, resol = resol, pos_start = 0)
     }, finally = {
-      unlink(c(temp_hic, temp_matrix))
     })
   }
 
@@ -452,13 +468,28 @@ compartment_ht <-
     if (is.null(standard))
       comps
     else
-      comps %>% flip_compartment(standard = standard)
+      comps %>% flip_compartment(standard = standard, resol = resol)
   }
 
 
-flip_compartment <- function(compartment, standard) {
-  colnames(standard)[4] <- "score"
-  standard %<>% select(chrom:score)
+#' Flip the compartment score signs according to `standard`
+#'
+#' @param standard Can be either `gene_density.hg19` or a BED-format data frame.
+#'   If `gene_density.hg19`, the function will load the gene density data.
+#'   Currently only supports a number of resolutions: 50k, 100k, 200k, 500k, 1m,
+#'   2.5m.
+flip_compartment <- function(compartment, standard, resol) {
+  if (is.character(standard)) {
+    assertthat::are_equal(standard, "gene_density.hg19")
+
+    standard_file <- system.file("extdata", str_interp("binned.${resol %/% 1000}kbp.bed"), package = "hictools")
+    standard <- read_tsv(
+      file = standard_file,
+      col_names = c("chrom", "start", "end", "score"), col_types = "ciin")
+  } else {
+    colnames(standard)[4] <- "score"
+    standard %<>% select(chrom:score)
+  }
 
   unique(compartment$chrom) %>%
     map_dfr(function(chrom) {

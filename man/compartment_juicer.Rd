@@ -6,12 +6,22 @@
 \usage{
 compartment_juicer(
   hic_matrix,
-  juicertools,
+  juicertools = NULL,
   java = "java",
   norm = "NONE",
+  chrom = NULL,
   resol = NULL,
   standard = NULL
 )
+}
+\arguments{
+\item{hic_matrix}{Either a \code{hic_matrix} object, or the path of the \code{.hic}
+name. If a file path, \code{resol} cannot be NULL since we can't infer
+resolution directly from the \code{.hic} file.}
+
+\item{chrom}{A character vector indicating which chromosomes to run. If
+\code{NULL}, will calculate compartment scores for all chromosomes. However, in
+this case, \code{hic_matrx} cannot be the \code{.hic} file name.}
 }
 \description{
 Calculate compartment scores using Juicer tools
