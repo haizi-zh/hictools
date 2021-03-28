@@ -502,7 +502,11 @@ flip_compartment <- function(compartment, standard, resol) {
         by = c("chrom", "start", "end")
       ) %>% na.omit()
       correlation <- with(joined, cor(score.x, score.y))
-      if (correlation > 0)
+      # Sometimes correlation can be NA. For example: In cor(joined$score.x,
+      # joined$score.y) : the standard deviation is zero
+      if (is.na(correlation))
+        compartment
+      else if (correlation > 0)
         compartment
       else
         compartment %>% mutate(score = -score)
