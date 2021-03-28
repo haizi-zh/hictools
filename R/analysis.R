@@ -307,9 +307,10 @@ compartment_juicer <-
         )
       retcode <- system(cmd)
       if (retcode != 0) {
-        stop(str_interp(
+        warning(str_interp(
           "Error in compartment calculation , RET: ${retcode}, CMD: ${cmd}"
         ))
+        return(NULL)
       }
       comps <-
         read_tsv(
