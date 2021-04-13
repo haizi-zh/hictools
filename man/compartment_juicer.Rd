@@ -6,7 +6,7 @@
 \usage{
 compartment_juicer(
   hic_matrix,
-  juicertools = NULL,
+  juicertools = get_juicer_tools(),
   java = "java",
   norm = "NONE",
   chrom = NULL,

@@ -143,26 +143,22 @@ load_juicer_dump <- function(file_path, chrom, matrix = "unknown", norm = "unkno
 
 
 #' @export
-load_hic_genbed <- function(file_path, chrom = NULL, matrix = "unknown", norm = "unknown") {
-  data <- bioessentials::load_genbed(file_path = file_path) %>%
-    modify_at(4, as.character) %>%
-    modify_at(5:6, as.integer) %>%
-    modify_at(7, as.numeric) %>%
-    select(-3, -6)
-  colnames(data)[1:5] <- c("chrom1", "pos1", "chrom2", "pos2", "score")
+load_hic_genbed <- function(file_path, resol = NULL, chrom = NULL, matrix = "unknown", norm = "unknown") {
+  stopifnot(is.null(chrom) || length(chrom) == 1)
+  data <- bedtorch::read_bed(file_path, range = chrom, use_gr = FALSE)
 
-  if (!is.null(chrom)) {
-    data %<>% filter(chrom1 %in% chrom & chrom2 %in% chrom)
-  } else {
-    chrom <- c(data$chrom1, data$chrom2) %>% unique()
-  }
+  data[, chrom2 := factor(as.character(chrom), levels = levels(chrom))]
+  data.table::setnames(data, 1:7, c("chrom1", "start1", "end1", "chrom2", "start2", "end2", "score"))
+  data.table::setkey(data, "chrom1", "start1", "chrom2", "start2")
 
-  attr(data, "resol") <- guess_resol(data)
+  if (!is.null(resol))
+    attr(data, "resol") <- resol
+  else
+    attr(data, "resol") <- guess_resol(data)
+
   data %>%
     set_attr("type", matrix) %>%
-    set_attr("norm", norm) %>%
-    set_attr("chrom", sort(chrom)) %>%
-    arrange("chrom1", "chrom2", "pos1", "pos2")
+    set_attr("norm", norm)
 }
 
 
@@ -318,32 +314,47 @@ load_hic <- function(file_path, format = NULL, resol = NULL, ...) {
 #' @param java Path to JVM. Default is \code{java}
 #' @param ref_genome Reference genome \code{hic_matrix} is using. Default is \code{hg19}
 #' @export
-dump_juicer_hic <- function(hic_matrix, file_path, juicertools, java = "java", ref_genome = "hg19") {
-  stopifnot(ref_genome == "hg19")
+dump_juicer_hic <-
+  function(hic_matrix,
+           file_path,
+           juicertools = get_juicer_tools(),
+           java = "java",
+           ref_genome = "hg19") {
+    stopifnot(ref_genome == "hg19")
 
-  juicer_short_path <- tempfile(fileext = ".short")
-  tryCatch({
+    juicer_short_path <- tempfile(fileext = ".short")
+    on.exit(unlink(juicer_short_path), add = TRUE)
+
     dump_juicer_short(hic_matrix, file_path = juicer_short_path)
 
-    cmd <- str_interp("${java} -jar ${juicertools} pre ${juicer_short_path} ${file_path} ${ref_genome}")
+    cmd <-
+      str_interp("${java} -jar ${juicertools} pre ${juicer_short_path} ${file_path} ${ref_genome}")
     retcode <- system(cmd)
     if (retcode != 0) {
       stop(str_interp("Error in creating .hic , RET: ${retcode}, CMD: ${cmd}"))
     }
-  }, finally = {
-    unlink(juicer_short_path)
-  })
-}
+  }
 
 
 #' @export
 dump_juicer_short <- function(hic_matrix, file_path) {
   # 0 22 16000000 0 0 22 16000000 1 95
-  hic_matrix %>%
-    mutate(str1 = 0, frag1 = 0, str2 = 0, frag2 = 1) %>%
-    select(str1, chrom1, pos1, frag1, str2, chrom2, pos2, frag2, score) %>%
+  hic_matrix[, .(str1 = 0,
+                 chrom1,
+                 pos1 = start1,
+                 frag1 = 0,
+                 str2 = 0,
+                 chrom2,
+                 pos2 = start2,
+                 frag2 = 1,
+                 score)] %>%
     na.omit() %>%
-    write_delim(file = file_path, col_names = FALSE, delim = " ")
+    data.table::fwrite(file = file_path, col.names = FALSE, sep = " ")
+  # hic_matrix %>%
+  #   mutate(str1 = 0, frag1 = 0, str2 = 0, frag2 = 1) %>%
+  #   select(str1, chrom1, pos1, frag1, str2, chrom2, pos2, frag2, score) %>%
+  #   na.omit() %>%
+  #   write_delim(file = file_path, col_names = FALSE, delim = " ")
 }
 
 
@@ -387,7 +398,7 @@ convert_matrix_hic <- function(mat, chrom, resol, pos_start) {
 convert_hic_matrix <- function(hic_matrix, chrom = NULL) {
   if (is.null(chrom)) {
     # Infer chrom from input
-    chrom <- unique(c(hic_matrix$chrom1, hic_matrix$chrom2))
+    chrom <- unique(c(as.character(hic_matrix$chrom1), as.character(hic_matrix$chrom2)))
     stopifnot(length(chrom) == 1)
   }
 
@@ -395,19 +406,21 @@ convert_hic_matrix <- function(hic_matrix, chrom = NULL) {
   stopifnot(resol > 0)
 
   # Single-chromosome matrix
-  hic_matrix %<>%
-    filter(chrom1 == chrom & chrom2 == chrom)
+  hic_matrix <- hic_matrix[chrom1 == chrom & chrom2 == chrom]
+  min_pos <- min(c(hic_matrix$start1, hic_matrix$start2))
+  max_pos <- max(c(hic_matrix$start1, hic_matrix$start2))
+  hic_matrix[, `:=`(x = (start1 - min_pos) %/% resol + 1,
+                    y = (start2 - min_pos) %/% resol + 1)]
 
-  min_pos <- min(c(hic_matrix$pos1, hic_matrix$pos2))
-  max_pos <- max(c(hic_matrix$pos1, hic_matrix$pos2))
-  hic_matrix %<>%
-    mutate(x = (pos1 - min_pos) %/% resol + 1,
-           y = (pos2 - min_pos) %/% resol + 1)
 
   mat_dim <- (max_pos - min_pos) %/% resol + 1
   mat <- matrix(rep(NA, mat_dim * mat_dim), nrow = mat_dim)
-  mat[hic_matrix %>% select(x, y) %>% as.matrix()] <- hic_matrix$score
-  mat[hic_matrix %>% select(y, x) %>% as.matrix()] <- hic_matrix$score
+  mat[hic_matrix[, .(x, y)] %>% as.matrix()] <- hic_matrix$score
+  mat[hic_matrix[, .(y, x)] %>% as.matrix()] <- hic_matrix$score
+
+
+  # mat[hic_matrix %>% select(x, y) %>% as.matrix()] <- hic_matrix$score
+  # mat[hic_matrix %>% select(y, x) %>% as.matrix()] <- hic_matrix$score
 
   mat_pos <- (1:mat_dim - 1) * resol + min_pos
   mat_header <- mat_pos %>% map_chr(~ str_interp("chr${chrom}-$[d]{.}"))

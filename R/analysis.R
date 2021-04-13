@@ -186,11 +186,12 @@ get_possible_dist <-
 #
 #' @export
 oe_ht <- function(hic_matrix,
-                  method,
+                  method = c("lieberman", "obs_exp", "nonzero", "average"),
                   genome_wide = FALSE,
                   smoothing = TRUE,
                   min_nonzero = 4) {
-  if (method %in% c("lieberman", "obs_exp", "nonzero", "average")) {
+  method <- match.arg(method)
+
     chroms <- unique(c(hic_matrix$chrom1, hic_matrix$chrom2))
     resol <- attr(hic_matrix, "resol")
 
@@ -247,9 +248,6 @@ oe_ht <- function(hic_matrix,
         select(chrom1:score, observed) %>%
         set_attr(which = "resol", resol)
     })
-  } else {
-    stop(str_interp("Invalid method ${method}"))
-  }
 }
 
 
@@ -264,16 +262,13 @@ oe_ht <- function(hic_matrix,
 #' @export
 compartment_juicer <-
   function(hic_matrix,
-           juicertools = NULL,
+           juicertools = get_juicer_tools(),
            java = "java",
            norm = "NONE",
            chrom = NULL,
            resol = NULL,
            standard = NULL
            ) {
-    if (is.null(juicertools))
-      juicertools = system.file("extdata", "juicer_tools_1.22.01.jar", package = "hictools")
-
     if (is.character(hic_matrix)) {
       assertthat::assert_that(!is.null(chrom))
       assertthat::assert_that(!is.null(resol))
@@ -284,7 +279,7 @@ compartment_juicer <-
         resol = attr(hic_matrix, "resol")
       }
       if (is.null(chrom))
-        chrom <- unique(c(hic_matrix$chrom1, hic_matrix$chrom2))
+        chrom <- unique(c(as.character(hic_matrix$chrom1), as.character(hic_matrix$chrom2)))
 
       # Dump the matrix to .hic
       hic_file <- tempfile(fileext = ".hic")
@@ -298,7 +293,7 @@ compartment_juicer <-
       )
     }
 
-    comps <- chrom %>% map_dfr(function(chrom) {
+    comps <- chrom %>% map(function(chrom) {
       ev_file <- tempfile()
       on.exit(file.remove(ev_file), add = TRUE)
       cmd <-
@@ -312,21 +307,31 @@ compartment_juicer <-
         ))
         return(NULL)
       }
-      comps <-
-        read_tsv(
-          ev_file,
-          col_names = "score",
-          col_types = "n",
-          na = c("", "NA", "NaN")
-        ) %>%
-        mutate(
-          chrom = chrom,
-          start = 0:(length(score) - 1) * resol,
-          end = start + resol
-        ) %>%
-        select(chrom, start, end, score)
-      comps
-    })
+      comps <- data.table::fread(ev_file, col.names = "score", na.strings = c("", "NA", "NaN"))
+      comps[, {
+        start <- as.integer(0:(length(score) - 1) * resol)
+        end <- as.integer(start + resol)
+        list(chrom = chrom, start = start, end = end, score = score)
+      }]
+      # comps <- comps[, .(chrom, start = as.integer(0:(length(score) - 1) * resol))]
+      # comps <-
+      #   read_tsv(
+      #     ev_file,
+      #     col_names = "score",
+      #     col_types = "n",
+      #     na = c("", "NA", "NaN")
+      #   ) %>%
+      #   mutate(
+      #     chrom = chrom,
+      #     start = 0:(length(score) - 1) * resol,
+      #     end = start + resol
+      #   ) %>%
+      #   select(chrom, start, end, score)
+      # comps
+    }) %>%
+      data.table::rbindlist()
+
+    comps <- bedtorch::normalize_table(comps)
 
     if (is.null(standard))
       comps
@@ -400,15 +405,22 @@ pearson_ht <- function(hic_matrix, chrom, method = "lieberman") {
 #' @export
 compartment_ht <-
   function(hic_matrix,
-           method = "lieberman",
-           matrix = "observed",
+           method = c("lieberman", "obs_exp", "nonzero", "average"),
+           matrix = c("observed", "oe"),
            npc = 2,
            standard = NULL,
            ...) {
+    method <- match.arg(method)
+    matrix <- match.arg(matrix)
+
     stopifnot(matrix %in% c("observed", "oe"))
     # stopifnot(method %in% c("juicer", "pca"))
 
-    chroms <- unique(c(hic_matrix$chrom1, hic_matrix$chrom2))
+    chroms <-
+      unique(c(
+        as.character(hic_matrix$chrom1),
+        as.character(hic_matrix$chrom2)
+      ))
     resol <- attr(hic_matrix, "resol")
 
     if (matrix == "observed") {
@@ -434,15 +446,15 @@ compartment_ht <-
       #   hic_matrix$score
       # mc <- m %>% cor(use = "pairwise.complete.obs")
 
-      hic_matrix %<>%
-        filter(chrom1 == chrom & chrom2 == chrom)
-      pos_start <- min(c(hic_matrix$pos1, hic_matrix$pos2))
+      hic_matrix <- hic_matrix[chrom1 == chrom & chrom2 == chrom]
+      pos_start <- min(c(hic_matrix$start1, hic_matrix$start2))
+
       mc <- hic_matrix %>%
         convert_hic_matrix() %>%
         cor(use = "pairwise.complete.obs")
 
       all_na <-
-        1:ncol(mc) %>% map_lgl(function(idx) {
+        seq.int(ncol(mc)) %>% map_lgl(function(idx) {
           all(is.na(mc[, idx]))
         })
 
@@ -451,19 +463,22 @@ compartment_ht <-
       pc <- matrix(rep(NA, ncol(mc) * npc), ncol = npc)
       pc[!all_na, ] <- pc_subset
 
-      result <- tibble(
+      result <- data.table::data.table(
         chrom = chrom,
-        start = as.integer((seq_along(pc[, 1]) - 1) * resol + pos_start),
-        end = start + resol,
-        score = pc[, 1]
+        start = as.integer((seq_along(pc[, 1]) - 1) * resol + pos_start)
       )
-      #
-      1:npc %>% walk(function(pc_idx) {
-        result[[paste0("PC", pc_idx)]] <<- pc[, pc_idx]
+      result[, `:=`(end = as.integer(start + resol), score = pc[, 1])]
+      data.table::setkey(result, "chrom", "start", "end")
+
+      seq.int(npc) %>% walk(function(pc_idx) {
+        result[, (paste0("PC", pc_idx)) := pc[, pc_idx]]
+        # result[[paste0("PC", pc_idx)]] <<- pc[, pc_idx]
       })
-      result %>%
-        mutate(score = PC1) %>%
-        select(chrom, start, end, score, everything())
+
+      result
+      # result %>%
+      #   mutate(score = PC1) %>%
+      #   select(chrom, start, end, score, everything())
     })
 
     if (is.null(standard))
@@ -484,32 +499,51 @@ flip_compartment <- function(compartment, standard, resol) {
     assertthat::are_equal(standard, "gene_density.hg19")
 
     standard_file <- system.file("extdata", str_interp("binned.${resol %/% 1000}kbp.bed"), package = "hictools")
-    standard <- read_tsv(
-      file = standard_file,
-      col_names = c("chrom", "start", "end", "score"), col_types = "ciin")
+    standard <- bedtorch::read_bed("inst/extdata/binned.500kbp.bed", use_gr = FALSE)
+    # standard <- read_tsv(
+    #   file = standard_file,
+    #   col_names = c("chrom", "start", "end", "score"), col_types = "ciin")
   } else {
-    colnames(standard)[4] <- "score"
-    standard %<>% select(chrom:score)
+    data.table::setnames(standard, 4, "score")
+    standard <- standard[, 1:4]
+    # colnames(standard)[4] <- "score"
+    # standard %<>% select(chrom:score)
   }
 
   unique(compartment$chrom) %>%
-    map_dfr(function(chrom) {
-      compartment %<>% filter(chrom == !!chrom)
-      standard %<>% filter(chrom == !!chrom)
-      joined <- inner_join(
-        x = compartment,
-        y = standard,
-        by = c("chrom", "start", "end")
-      ) %>% na.omit()
-      correlation <- with(joined, cor(score.x, score.y))
+    map_dfr(function(chrom0) {
+      compartment <- compartment[chrom == chrom0]
+      standard <- standard[chrom == chrom0]
+      joined <- compartment[standard, nomatch=0]
+      correlation <- with(joined, cor(score, i.score))
       # Sometimes correlation can be NA. For example: In cor(joined$score.x,
       # joined$score.y) : the standard deviation is zero
-      if (is.na(correlation))
-        compartment
-      else if (correlation > 0)
-        compartment
-      else
-        compartment %>% mutate(score = -score)
+      if (!is.na(correlation) && correlation < 0)
+        compartment[, score := -score]
+
+      compartment
+      #
+      # if (is.na(correlation) || correlation > 0)
+      #   compartment
+      # else {}
+      #   compartment %>% mutate(score = -score)
+      #
+      # compartment %<>% filter(chrom == !!chrom)
+      # standard %<>% filter(chrom == !!chrom)
+      # joined <- inner_join(
+      #   x = compartment,
+      #   y = standard,
+      #   by = c("chrom", "start", "end")
+      # ) %>% na.omit()
+      # correlation <- with(joined, cor(score.x, score.y))
+      # # Sometimes correlation can be NA. For example: In cor(joined$score.x,
+      # # joined$score.y) : the standard deviation is zero
+      # if (is.na(correlation))
+      #   compartment
+      # else if (correlation > 0)
+      #   compartment
+      # else
+      #   compartment %>% mutate(score = -score)
     })
 }
 

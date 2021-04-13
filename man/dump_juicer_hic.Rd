@@ -7,7 +7,7 @@
 dump_juicer_hic(
   hic_matrix,
   file_path,
-  juicertools,
+  juicertools = get_juicer_tools(),
   java = "java",
   ref_genome = "hg19"
 )
