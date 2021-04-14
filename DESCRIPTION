@@ -1,6 +1,6 @@
 Package: hictools
 Title: Home-made handy tools for Hi-C
-Version: 0.1.3.9000
+Version: 0.1.3.9002
 Authors@R: 
     person(given = "Haizi",
            family = "Zheng",
@@ -16,11 +16,12 @@ RoxygenNote: 7.1.1
 Imports: 
     tidyverse,
     here,
-    bedtorch (>= 0.1.9.9007),
+    bedtorch (>= 0.1.11.9001),
     strawr (>= 0.0.3),
     purrr,
     ggplot2,
-    rhdf5
+    rhdf5,
+    GenomicRanges (>= 1.42.0)
 Depends: 
     R (>= 4.0)
 Suggests: 
@@ -28,7 +29,8 @@ Suggests:
     logging,
     here
 Config/testthat/edition: 3
-Remotes: 
+Remotes:  
     aidenlab/straw/R,
+    haizi-zh/bedtorch,
     bioc::rhdf5,
-    haizi-zh/bedtorch@dev
+    bioc::GenomicRanges

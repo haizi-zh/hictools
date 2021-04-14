@@ -6,6 +6,12 @@ plot_compartment <-
   function(comps,
            resol = NULL,
            full_scale = FALSE) {
+    if (is(comps, "GRanges")) {
+      comps %<>%
+        GenomicRanges::as.data.frame() %>%
+        mutate(start = start - 1L)
+    }
+
     if (is.null(resol)) {
       resol <- comps$start %>% diff() %>% min()
     }
@@ -46,6 +52,9 @@ plot_hic_matrix <- function(hic_matrix,
   stopifnot(length(chrom) == 1)
   resol <- attr(hic_matrix, "resol")
   stopifnot(resol > 0)
+
+  if (is(hic_matrix, "data.table"))
+    hic_matrix <- as_tibble(hic_matrix) %>% mutate(pos1 = pmin(start1, start2), pos2 = pmax(start1, start2))
 
   # Ensure the input is upper trangular
   hic_matrix %<>% filter(chrom1 == chrom & chrom2 == chrom)

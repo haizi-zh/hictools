@@ -277,6 +277,7 @@ compartment_juicer <-
     } else {
       if (is.null(resol)) {
         resol = attr(hic_matrix, "resol")
+        stopifnot(is_valid_resol(resol))
       }
       if (is.null(chrom))
         chrom <- unique(c(as.character(hic_matrix$chrom1), as.character(hic_matrix$chrom2)))
@@ -295,7 +296,7 @@ compartment_juicer <-
 
     comps <- chrom %>% map(function(chrom) {
       ev_file <- tempfile()
-      on.exit(file.remove(ev_file), add = TRUE)
+      on.exit(unlink(ev_file), add = TRUE)
       cmd <-
         str_interp(
           "${java} -jar ${juicertools} eigenvector ${norm} ${hic_file} ${chrom} BP ${resol} ${ev_file}"
@@ -331,12 +332,12 @@ compartment_juicer <-
     }) %>%
       data.table::rbindlist()
 
-    comps <- bedtorch::normalize_table(comps)
+    data.table::setkey(comps, "chrom", "start", "end")
 
-    if (is.null(standard))
-      comps
-    else
-      comps %>% flip_compartment(standard = standard, resol = resol)
+    if (!is.null(standard))
+      comps %<>% flip_compartment(standard = standard, resol = resol)
+
+    bedtorch::df2bedtorch(comps)
   }
 
 
@@ -499,7 +500,7 @@ flip_compartment <- function(compartment, standard, resol) {
     assertthat::are_equal(standard, "gene_density.hg19")
 
     standard_file <- system.file("extdata", str_interp("binned.${resol %/% 1000}kbp.bed"), package = "hictools")
-    standard <- bedtorch::read_bed("inst/extdata/binned.500kbp.bed", use_gr = FALSE)
+    standard <- bedtorch::read_bed(standard_file, use_gr = FALSE)
     # standard <- read_tsv(
     #   file = standard_file,
     #   col_names = c("chrom", "start", "end", "score"), col_types = "ciin")

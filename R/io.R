@@ -276,8 +276,9 @@ guess_format <- function(file_path) {
 
 # Guess the resolution from data
 guess_resol <- function(data) {
-  sorted_pos <- c(data$pos1, data$pos2) %>% unique() %>% sort()
-  sorted_pos[2] - sorted_pos[1]
+  resol <- data[, unique(end1 - start1)]
+  stopifnot(length(resol) == 1)
+  resol
 }
 
 
