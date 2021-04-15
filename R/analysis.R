@@ -312,32 +312,18 @@ compartment_juicer <-
       comps[, {
         start <- as.integer(0:(length(score) - 1) * resol)
         end <- as.integer(start + resol)
-        list(chrom = chrom, start = start, end = end, score = score)
+        list(chrom = chrom, start = start, end = end,
+             score = ifelse(is.infinite(score) | is.nan(score), NA, score))
       }]
-      # comps <- comps[, .(chrom, start = as.integer(0:(length(score) - 1) * resol))]
-      # comps <-
-      #   read_tsv(
-      #     ev_file,
-      #     col_names = "score",
-      #     col_types = "n",
-      #     na = c("", "NA", "NaN")
-      #   ) %>%
-      #   mutate(
-      #     chrom = chrom,
-      #     start = 0:(length(score) - 1) * resol,
-      #     end = start + resol
-      #   ) %>%
-      #   select(chrom, start, end, score)
-      # comps
     }) %>%
       data.table::rbindlist()
 
-    data.table::setkey(comps, "chrom", "start", "end")
+    comps <- bedtorch::as.bedtorch_table(comps)
 
     if (!is.null(standard))
       comps %<>% flip_compartment(standard = standard, resol = resol)
 
-    bedtorch::df2bedtorch(comps)
+    comps
   }
 
 
@@ -516,35 +502,13 @@ flip_compartment <- function(compartment, standard, resol) {
       compartment <- compartment[chrom == chrom0]
       standard <- standard[chrom == chrom0]
       joined <- compartment[standard, nomatch=0]
-      correlation <- with(joined, cor(score, i.score))
+      correlation <- with(joined, cor(score, i.score, use = "complete.obs"))
       # Sometimes correlation can be NA. For example: In cor(joined$score.x,
       # joined$score.y) : the standard deviation is zero
       if (!is.na(correlation) && correlation < 0)
         compartment[, score := -score]
 
       compartment
-      #
-      # if (is.na(correlation) || correlation > 0)
-      #   compartment
-      # else {}
-      #   compartment %>% mutate(score = -score)
-      #
-      # compartment %<>% filter(chrom == !!chrom)
-      # standard %<>% filter(chrom == !!chrom)
-      # joined <- inner_join(
-      #   x = compartment,
-      #   y = standard,
-      #   by = c("chrom", "start", "end")
-      # ) %>% na.omit()
-      # correlation <- with(joined, cor(score.x, score.y))
-      # # Sometimes correlation can be NA. For example: In cor(joined$score.x,
-      # # joined$score.y) : the standard deviation is zero
-      # if (is.na(correlation))
-      #   compartment
-      # else if (correlation > 0)
-      #   compartment
-      # else
-      #   compartment %>% mutate(score = -score)
     })
 }
 
