@@ -5,7 +5,7 @@
 new_ht_table <-
   function(dt,
            resol,
-           type = c("OBSERVED", "OE"),
+           type = c("observed", "oe"),
            norm = c("NONE", "KR", "VC", "VC_SQRT")) {
     if (is(dt, "ht_table"))
       return(dt)
@@ -77,7 +77,7 @@ validate_ht_table <- function(ht) {
   stopifnot(!is.null(resol) && is.integer(resol) && resol %in% supported_resol)
 
   type <- attr(ht, "type")
-  stopifnot(!is.null(type) && type %in% c("OBSERVED", "OE"))
+  stopifnot(!is.null(type) && type %in% c("observed", "oe"))
 
   norm <- attr(ht, "norm")
   stopifnot(!is.null(norm) && norm %in% c("NONE", "KR", "VC", "VC_SQRT"))
@@ -90,7 +90,7 @@ validate_ht_table <- function(ht) {
 ht_table <-
   function(dt,
            resol,
-           type = c("OBSERVED", "OE"),
+           type = c("observed", "oe"),
            norm = c("NONE", "KR", "VC", "VC_SQRT")) {
     validate_ht_table(new_ht_table(dt, resol, type, norm))
   }
