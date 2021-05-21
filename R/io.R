@@ -51,80 +51,93 @@ supported_resol <- c(2.5e6L,
 #' @param norm See the manual of Juicer tools.
 #' @return A Hi-C object
 #' @export
-load_juicer_hic <- function(file_path, chrom, resol, matrix = "observed", norm = "NONE") {
+load_juicer_hic <- function(file_path,
+                            chrom,
+                            resol,
+                            type = c("observed", "oe"),
+                            norm = c("NONE", "KR", "VC", "VC_SQRT")) {
+  stopifnot(is.null(chrom) || length(chrom) == 1)
   stopifnot(!is.null(resol) && resol %in% supported_resol)
-  stopifnot(matrix %in% c("observed", "oe"))
-  stopifnot(norm %in% c("NONE", "KR", "VC", "VC_SQRT"))
+  type <- match.arg(type)
+  norm <- match.arg(norm)
 
+  tryCatch({
+    dt <- strawr::straw(
+      norm = norm,
+      fname = file_path,
+      chr1loc = chrom,
+      chr2loc = chrom,
+      unit = "BP",
+      binsize = resol,
+      matrix = tolower(type)
+    ) %>%
+      data.table::as.data.table()
 
-  chrom %>% map_dfr(function(chrom) {
-    tryCatch({
-      strawr::straw(
-        matrix = matrix,
-        norm = norm,
-        fname = file_path,
-        chr1loc = chrom,
-        chr2loc = chrom,
-        unit = "BP",
-        binsize = resol
-      ) %>%
-        as_tibble() %>%
-        mutate(
-          chrom1 = chrom,
-          chrom2 = chrom,
-          pos1 = x,
-          pos2 = y,
-          score = counts
-        ) %>%
-        select(chrom1, pos1, chrom2, pos2, score)
-    }, error = function(e) {
-      warning(str_interp("File doesn't have data for chromosome: ${chrom}"))
-      NULL
-    })
+    dt <-
+      dt[, .(
+        chrom1 = chrom,
+        pos1 = x,
+        chrom2 = chrom,
+        pos2 = y,
+        score = counts
+      )]
+    dt[order(chrom1, pos1, chrom2, pos2)]
+  }, error = function(e) {
+    warning(str_interp("File doesn't have data for chromosome: ${chrom}"))
+    NULL
   }) %>%
-    set_attr("resol", as.integer(resol)) %>%
-    set_attr("type", matrix) %>%
-    set_attr("norm", norm) %>%
-    set_attr("chrom", sort(chrom)) %>%
-    arrange("chrom1", "chrom2", "pos1", "pos2")
+    ht_table(resol = as.integer(resol), type = type, norm = norm)
 }
 
 
 #' @export
-load_juicer_short <- function(file_path, chrom = NULL, matrix = "unknown", norm = "unknown") {
-  # 0 22 16000000 0 0 22 16000000 1 95
-  data <- read_delim(
-    file = file_path,
-    delim = " ",
-    col_names = F,
-    col_types = "iciiiciin"
-  ) %>%
-    rename(
-      chrom1 = X2,
-      pos1 = X3,
-      chrom2 = X6,
-      pos2 = X7,
-      score = X9
-    ) %>%
-    select(chrom1, pos1, chrom2, pos2, score)
+load_juicer_short <-
+  function(file_path,
+           chrom = NULL,
+           type = c("observed", "oe"),
+           norm = c("NONE", "KR", "VC", "VC_SQRT")) {
+    type <- match.arg(type)
+    norm <- match.arg(norm)
 
-  if (!is.null(chrom)) {
-    data %<>% filter(chrom1 %in% chrom & chrom2 %in% chrom)
-  } else {
-    chrom <- c(data$chrom1, data$chrom2) %>% unique()
+    # 0 22 16000000 0 0 22 16000000 1 95
+    data <- read_delim(
+      file = file_path,
+      delim = " ",
+      col_names = F,
+      col_types = "iciiiciin"
+    ) %>%
+      rename(
+        chrom1 = X2,
+        pos1 = X3,
+        chrom2 = X6,
+        pos2 = X7,
+        score = X9
+      ) %>%
+      select(chrom1, pos1, chrom2, pos2, score) %>%
+      data.table::as.data.table()
+
+    resol <- guess_resol(data)
+
+    if (!is.null(chrom)) {
+      data <- data[data$chrom1 %in% chrom & data$chrom2 %in% chrom]
+    } else {
+      chrom <- c(data$chrom1, data$chrom2) %>% unique()
+    }
+
+    data %>% ht_table(resol = resol,
+                      type = type,
+                      norm = norm)
   }
 
-  attr(data, "resol") <- guess_resol(data)
-  data %>%
-    set_attr("type", matrix) %>%
-    set_attr("norm", norm) %>%
-    set_attr("chrom", sort(chrom)) %>%
-    arrange("chrom1", "chrom2", "pos1", "pos2")
-}
-
 #' @export
-load_juicer_dump <- function(file_path, chrom, matrix = "unknown", norm = "unknown") {
+load_juicer_dump <- function(file_path,
+                             chrom,
+                             type = c("observed", "oe"),
+                             norm = c("NONE", "KR", "VC", "VC_SQRT")) {
   stopifnot(length(chrom) == 1)
+  type <- match.arg(type)
+  norm <- match.arg(norm)
+
   # 16000000        16000000        95.0
   data <- read_tsv(
     file = file_path,
@@ -132,40 +145,58 @@ load_juicer_dump <- function(file_path, chrom, matrix = "unknown", norm = "unkno
     col_types = "iin"
   ) %>%
     mutate(chrom1 = chrom, chrom2 = chrom) %>%
-    select(chrom1, pos1, chrom2, pos2, score)
-  attr(data, "resol") <- guess_resol(data)
-  data %>%
-    set_attr("type", matrix) %>%
-    set_attr("norm", norm) %>%
-    set_attr("chrom", sort(chrom)) %>%
-    arrange("chrom1", "chrom2", "pos1", "pos2")
+    select(chrom1, pos1, chrom2, pos2, score) %>%
+    data.table::as.data.table()
+
+  resol <- guess_resol(data)
+
+  data %>% ht_table(resol = resol, type = type, norm = norm)
 }
 
 
 #' @export
-load_hic_genbed <- function(file_path, resol = NULL, chrom = NULL, matrix = "unknown", norm = "unknown") {
+load_hic_genbed <- function(file_path,
+                            resol = NULL,
+                            chrom = NULL,
+                            type = c("observed", "oe"),
+                            norm = c("NONE", "KR", "VC", "VC_SQRT")) {
   stopifnot(is.null(chrom) || length(chrom) == 1)
-  data <- bedtorch::read_bed(file_path, range = chrom, use_gr = FALSE)
+  type <- match.arg(type)
+  norm <- match.arg(norm)
 
-  data[, chrom2 := factor(as.character(chrom), levels = levels(chrom))]
-  data.table::setnames(data, 1:7, c("chrom1", "start1", "end1", "chrom2", "start2", "end2", "score"))
-  data.table::setkey(data, "chrom1", "start1", "chrom2", "start2")
+  data <-
+    bedtorch::read_bed(file_path, range = chrom, use_gr = FALSE) %>%
+    data.table::as.data.table()
 
-  if (!is.null(resol))
-    attr(data, "resol") <- resol
-  else
-    attr(data, "resol") <- guess_resol(data)
+  data.table::setnames(data,
+                       1:7,
+                       c(
+                         "chrom1",
+                         "pos1",
+                         "end1",
+                         "chrom2",
+                         "pos2",
+                         "end2",
+                         "score"
+                       ))
+  data <- data[, `:=`(chrom1 = as.character(chrom1), chrom2 = as.character(chrom2))]
+  if (is.null(resol))
+    resol <- guess_resol(data)
 
-  data %>%
-    set_attr("type", matrix) %>%
-    set_attr("norm", norm)
+  data[, .(chrom1, pos1, chrom2, pos2, score)] %>%
+    ht_table(resol = resol, type = type, norm = norm)
 }
 
 
 #' Load Hi-C data in cool format
 #' @export
-load_hic_cool <- function(file_path, chrom = NULL, matrix = "unknown", norm = "unknown", hdf5 = TRUE, cooler = "cooler") {
+load_hic_cool <- function(file_path, chrom = NULL,
+                          type = c("observed", "oe"),
+                          norm = c("NONE", "KR", "VC", "VC_SQRT"),
+                          hdf5 = TRUE, cooler = "cooler") {
   stopifnot(hdf5)
+  type <- match.arg(type)
+  norm <- match.arg(norm)
 
   # Load the bin table
   if (hdf5) {
@@ -228,7 +259,7 @@ load_hic_cool <- function(file_path, chrom = NULL, matrix = "unknown", norm = "u
   }
 
   # Load the contents
-  observed <- if (is.null(chrom)) {
+  dt <- if (is.null(chrom)) {
     # Genome-wide dump
     if (hdf5) {
       helper_h5()
@@ -244,17 +275,14 @@ load_hic_cool <- function(file_path, chrom = NULL, matrix = "unknown", norm = "u
   }
 
   if (!is.null(chrom)) {
-    observed %<>% filter(chrom1 %in% chrom & chrom2 %in% chrom)
+    dt %<>% filter(chrom1 %in% chrom & chrom2 %in% chrom)
   } else {
-    chrom <- c(observed$chrom1, observed$chrom2) %>% unique()
+    chrom <- c(dt$chrom1, dt$chrom2) %>% unique()
   }
 
-  attr(observed, "resol") <- guess_resol(observed)
-  observed %>%
-    set_attr("type", matrix) %>%
-    set_attr("norm", norm) %>%
-    set_attr("chrom", sort(chrom)) %>%
-    arrange("chrom1", "chrom2", "pos1", "pos2")
+  dt <- data.table::as.data.table(dt)
+  resol <- guess_resol(dt)
+  dt %>% ht_table(resol = resol, type = type, norm = norm)
 }
 
 
@@ -276,7 +304,13 @@ guess_format <- function(file_path) {
 
 # Guess the resolution from data
 guess_resol <- function(data) {
-  resol <- data[, unique(end1 - start1)]
+  if (all(c("end1", "end2") %in% colnames(data))) {
+    resol <- data[, unique(c(end1 - pos1, end2 - pos2))]
+  } else {
+    resol <-
+      data[, unique(abs(pos2 - pos1))] %>% purrr::keep(function(x)
+        x > 0) %>% min()
+  }
   stopifnot(length(resol) == 1)
   resol
 }
@@ -342,11 +376,11 @@ dump_juicer_short <- function(hic_matrix, file_path) {
   # 0 22 16000000 0 0 22 16000000 1 95
   hic_matrix[, .(str1 = 0,
                  chrom1,
-                 pos1 = start1,
+                 pos1,
                  frag1 = 0,
                  str2 = 0,
                  chrom2,
-                 pos2 = start2,
+                 pos2,
                  frag2 = 1,
                  score)] %>%
     na.omit() %>%
@@ -364,11 +398,17 @@ dump_hic_genbed <- function(hic_matrix, file_path) {
   resol <- attr(hic_matrix, "resol")
   stopifnot(is.integer(resol) && resol > 0)
 
-  hic_matrix %>%
-    rename(start1 = pos1, start2 = pos2) %>%
-    mutate(end1 = start1 + resol, end2 = start2 + resol) %>%
-    select(chrom1, start1, end1, chrom2, start2, end2, score, everything()) %>%
-    bioessentials::write_genbed(file = file_path)
+  hic_matrix <- hic_matrix[, .(
+    chrom = chrom1,
+    start = pos1,
+    end = pos1 + resol,
+    chrom2,
+    start2 = pos2,
+    end2 = pos2 + resol,
+    score = score
+  )]
+  bedtorch::as.bedtorch_table(hic_matrix) %>%
+    bedtorch::write_bed(file_path = file_path)
 }
 
 
@@ -408,10 +448,10 @@ convert_hic_matrix <- function(hic_matrix, chrom = NULL) {
 
   # Single-chromosome matrix
   hic_matrix <- hic_matrix[chrom1 == chrom & chrom2 == chrom]
-  min_pos <- min(c(hic_matrix$start1, hic_matrix$start2))
-  max_pos <- max(c(hic_matrix$start1, hic_matrix$start2))
-  hic_matrix[, `:=`(x = (start1 - min_pos) %/% resol + 1,
-                    y = (start2 - min_pos) %/% resol + 1)]
+  min_pos <- min(c(hic_matrix$pos1, hic_matrix$pos2))
+  max_pos <- max(c(hic_matrix$pos1, hic_matrix$pos2))
+  hic_matrix[, `:=`(x = (pos1 - min_pos) %/% resol + 1,
+                    y = (pos2 - min_pos) %/% resol + 1)]
 
 
   mat_dim <- (max_pos - min_pos) %/% resol + 1

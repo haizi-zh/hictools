@@ -4,7 +4,13 @@
 \alias{load_juicer_hic}
 \title{Load Hi-C dataset from a .hic file}
 \usage{
-load_juicer_hic(file_path, chrom, resol, matrix = "observed", norm = "NONE")
+load_juicer_hic(
+  file_path,
+  chrom,
+  resol,
+  matrix = c("observed", "oe"),
+  norm = c("NONE", "KR", "VC", "VC_SQRT")
+)
 }
 \arguments{
 \item{file_path}{Path to the .hic file}

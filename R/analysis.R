@@ -42,6 +42,8 @@ strat_dist <-
     resol <- attr(hic_matrix, "resol")
     chroms <- unique(c(hic_matrix$chrom1, hic_matrix$chrom2))
 
+    hic_matrix <- as_tibble(hic_matrix)
+
     chroms %>% map_dfr(function(chrom) {
       strat_data <- hic_matrix %>%
         mutate(dist = abs(pos1 - pos2)) %>%
@@ -103,6 +105,8 @@ oe_juicer <-
            ref_genome = "hg19") {
     chroms <- unique(c(hic_matrix$chrom1, hic_matrix$chrom2))
     resol <- attr(hic_matrix, "resol")
+
+    hic_matrix <- as_tibble(hic_matrix)
 
     chroms %>% map_dfr(function(chrom) {
       temp_hic <- tempfile(fileext = ".hic")
@@ -393,15 +397,13 @@ pearson_ht <- function(hic_matrix, chrom, method = "lieberman") {
 compartment_ht <-
   function(hic_matrix,
            method = c("lieberman", "obs_exp", "nonzero", "average"),
-           matrix = c("observed", "oe"),
-           npc = 2,
+           type = c("observed", "oe"),
+           npc = 2L,
            standard = NULL,
            ...) {
+    stopifnot(is(hic_matrix, "ht_table"))
     method <- match.arg(method)
-    matrix <- match.arg(matrix)
-
-    stopifnot(matrix %in% c("observed", "oe"))
-    # stopifnot(method %in% c("juicer", "pca"))
+    type <- match.arg(type)
 
     chroms <-
       unique(c(
@@ -410,7 +412,7 @@ compartment_ht <-
       ))
     resol <- attr(hic_matrix, "resol")
 
-    if (matrix == "observed") {
+    if (type == "observed") {
       hic_matrix <- oe_ht(hic_matrix, method = method, ...)
     }
 
@@ -434,7 +436,7 @@ compartment_ht <-
       # mc <- m %>% cor(use = "pairwise.complete.obs")
 
       hic_matrix <- hic_matrix[chrom1 == chrom & chrom2 == chrom]
-      pos_start <- min(c(hic_matrix$start1, hic_matrix$start2))
+      pos_start <- min(c(hic_matrix$pos1, hic_matrix$pos2))
 
       mc <- hic_matrix %>%
         convert_hic_matrix() %>%
@@ -468,10 +470,10 @@ compartment_ht <-
       #   select(chrom, start, end, score, everything())
     })
 
-    if (is.null(standard))
-      comps
-    else
-      comps %>% flip_compartment(standard = standard, resol = resol)
+    if (!is.null(standard))
+      comps %<>% flip_compartment(standard = standard, resol = resol)
+
+    bedtorch::as.bedtorch_table(comps)
   }
 
 
