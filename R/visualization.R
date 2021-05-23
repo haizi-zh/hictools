@@ -5,12 +5,21 @@
 plot_compartment <-
   function(comps,
            resol = NULL,
+           chrom = NULL,
            full_scale = FALSE) {
     if (is(comps, "GRanges")) {
       comps %<>%
         GenomicRanges::as.data.frame() %>%
         mutate(start = start - 1L)
     }
+
+    if (is.null(chrom)) {
+      chrom <- unique(comps$chrom)
+    }
+    # Only deal with single-chromosome track
+    stopifnot(!is.null(chrom) && length(chrom) == 1)
+    pick_idx <- comps$chrom == chrom
+    comps <- comps[pick_idx]
 
     if (is.null(resol)) {
       resol <- comps$start %>% diff() %>% min()
@@ -34,9 +43,13 @@ plot_compartment <-
 #' Visualize Hi-C data
 #'
 #' Show a heatmap of the Hi-C data
+#'
+#' @param chrom Indicate which chromosome to process. If `NULL`, `hic_matrix`
+#'   should contain only one chromosome, which will be used in the
+#'   visualization.
 #' @export
 plot_hic_matrix <- function(hic_matrix,
-                            chrom,
+                            chrom = NULL,
                             control_hic_matrix = NULL,
                             # control_gm = NULL,
                             scale_factor = c(1, 1),
@@ -49,12 +62,15 @@ plot_hic_matrix <- function(hic_matrix,
                             matrix = "observed",
                             gamma = 2.3,
                             tile_outline = NULL) {
-  stopifnot(length(chrom) == 1)
+  if (is.null(chrom))
+    chrom <- attr(hic_matrix, "chrom")
+  stopifnot(!is.null(chrom) && length(chrom) == 1)
+
   resol <- attr(hic_matrix, "resol")
   stopifnot(resol > 0)
 
   if (is(hic_matrix, "data.table"))
-    hic_matrix <- as_tibble(hic_matrix) %>% mutate(pos1 = pmin(start1, start2), pos2 = pmax(start1, start2))
+    hic_matrix <- as_tibble(hic_matrix)
 
   # Ensure the input is upper trangular
   hic_matrix %<>% filter(chrom1 == chrom & chrom2 == chrom)
