@@ -26,7 +26,7 @@ plot_compartment <-
     }
     stopifnot()
 
-    p <- comps %>% na.omit() %>%
+    p <- comps[!is.na(score)] %>%
       mutate(compartment = factor(ifelse(score > 0, "open", "close"), levels = c("open", "close"))) %>%
       ggplot(aes(x = start, y = score, fill = compartment)) +
       geom_col(width = resol * .75) +
