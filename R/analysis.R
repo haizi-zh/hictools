@@ -334,10 +334,10 @@ compartment_juicer <-
       return(comps)
     }
 
-    comps[, score := bedtorch::rollmean(
+    comps[, score := zoo::rollmean(
       score,
       k = smoothing,
-      na_pad = TRUE,
+      na.pad = TRUE,
       na.rm = TRUE,
       align = "center"
     )]
@@ -472,12 +472,14 @@ compartment_ht <-
         start = as.integer((seq_along(pc[, 1]) - 1) * resol + pos_start)
       )
       result[, `:=`(end = as.integer(start + resol), score = pc[, 1])]
+      result[, score := ifelse(is.infinite(score) | is.nan(score), NA, score)]
       data.table::setkey(result, "chrom", "start", "end")
 
       seq.int(npc) %>% walk(function(pc_idx) {
         result[, (paste0("PC", pc_idx)) := pc[, pc_idx]]
         # result[[paste0("PC", pc_idx)]] <<- pc[, pc_idx]
       })
+
 
       result
       # result %>%
@@ -494,10 +496,10 @@ compartment_ht <-
       return(comps)
     }
 
-    comps[, score := bedtorch::rollmean(
+    comps[, score := zoo::rollmean(
       score,
       k = smoothing,
-      na_pad = TRUE,
+      na.pad = TRUE,
       na.rm = TRUE,
       align = "center"
     )]
