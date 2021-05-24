@@ -196,62 +196,64 @@ oe_ht <- function(hic_matrix,
                   min_nonzero = 4) {
   method <- match.arg(method)
 
-    chroms <- unique(c(hic_matrix$chrom1, hic_matrix$chrom2))
-    resol <- attr(hic_matrix, "resol")
+  chroms <- unique(c(hic_matrix$chrom1, hic_matrix$chrom2))
+  resol <- attr(hic_matrix, "resol")
+  norm <- attr(hic_matrix, "norm")
 
-    chroms %>% map_dfr(function(chrom) {
-      # Ignore inter-chromosomal contacts
-      hic_matrix %<>%
-        filter(chrom1 == chrom & chrom2 == chrom) %>%
-        mutate(distbin = abs(pos1 - pos2) %/% resol)
+  hic_matrix <- as_tibble(hic_matrix)
 
-      max_bin_idx <-
-        max(c(hic_matrix$pos1, hic_matrix$pos2)) %/% resol + 1
-      min_bin_idx <-
-        min(c(hic_matrix$pos1, hic_matrix$pos2)) %/% resol + 1
-      weight <-
-        strat_dist(hic_matrix,
-                   smoothing = smoothing,
-                   min_nonzero = min_nonzero)
+  chroms %>% map_dfr(function(chrom) {
+    # Ignore inter-chromosomal contacts
+    hic_matrix %<>%
+      filter(chrom1 == chrom & chrom2 == chrom) %>%
+      mutate(distbin = abs(pos1 - pos2) %/% resol)
 
-      joined <- inner_join(x = hic_matrix,
-                           y = weight,
-                           by = "distbin")
+    max_bin_idx <-
+      max(c(hic_matrix$pos1, hic_matrix$pos2)) %/% resol + 1
+    min_bin_idx <-
+      min(c(hic_matrix$pos1, hic_matrix$pos2)) %/% resol + 1
+    weight <-
+      strat_dist(hic_matrix,
+                 smoothing = smoothing,
+                 min_nonzero = min_nonzero)
 
-      (if (method == "obs_exp") {
-        joined %>%
-          mutate(observed = score, score = score / (total / (
-            max_bin_idx - min_bin_idx + 1 - distbin
-          )))
-      } else if (method == "average") {
-        joined %>%
-          mutate(observed = score, score = score / avg)
-      } else if (method == "nonzero") {
-        joined %>%
-          mutate(observed = score,
-                 score = score / (total / nonzero))
-      } else if (method == "lieberman") {
-        if (genome_wide) {
-          possible_dist <-
-            get_possible_dist(resol = resol, genome_wide = TRUE)
-        } else {
-          possible_dist <-
-            get_possible_dist(resol = resol,
-                              genome_wide = FALSE,
-                              chrom = chrom) %>%
-            filter(chrom == !!chrom)
-        }
-        inner_join(x = joined,
-                   y = possible_dist,
-                   by = "distbin") %>%
-          mutate(observed = score,
-                 score = score / (total / possible_dist))
+    joined <- inner_join(x = hic_matrix,
+                         y = weight,
+                         by = "distbin")
+
+    (if (method == "obs_exp") {
+      joined %>%
+        mutate(observed = score, score = score / (total / (max_bin_idx - min_bin_idx + 1 - distbin)))
+    } else if (method == "average") {
+      joined %>%
+        mutate(observed = score, score = score / avg)
+    } else if (method == "nonzero") {
+      joined %>%
+        mutate(observed = score,
+               score = score / (total / nonzero))
+    } else if (method == "lieberman") {
+      if (genome_wide) {
+        possible_dist <-
+          get_possible_dist(resol = resol, genome_wide = TRUE)
       } else {
-        stop(str_interp("Invalid method ${method}"))
-      }) %>%
-        select(chrom1:score, observed) %>%
-        set_attr(which = "resol", resol)
-    })
+        possible_dist <-
+          get_possible_dist(resol = resol,
+                            genome_wide = FALSE,
+                            chrom = chrom) %>%
+          filter(chrom == !!chrom)
+      }
+      inner_join(x = joined,
+                 y = possible_dist,
+                 by = "distbin") %>%
+        mutate(observed = score,
+               score = score / (total / possible_dist))
+    } else {
+      stop(str_interp("Invalid method ${method}"))
+    }) %>%
+      select(chrom1:score, observed) %>%
+      set_attr(which = "resol", resol)
+  }) %>%
+    hictools::ht_table(resol = resol, type = "oe", norm = norm)
 }
 
 
@@ -271,7 +273,8 @@ compartment_juicer <-
            norm = "NONE",
            chrom = NULL,
            resol = NULL,
-           standard = NULL
+           standard = NULL,
+           smoothing = NULL
            ) {
     if (is.character(hic_matrix)) {
       assertthat::assert_that(!is.null(chrom))
@@ -327,6 +330,17 @@ compartment_juicer <-
     if (!is.null(standard))
       comps %<>% flip_compartment(standard = standard, resol = resol)
 
+    if (is.null(smoothing) || smoothing == 1) {
+      return(comps)
+    }
+
+    comps[, score := bedtorch::rollmean(
+      score,
+      k = smoothing,
+      na_pad = TRUE,
+      na.rm = TRUE,
+      align = "center"
+    )]
     comps
   }
 
@@ -400,6 +414,7 @@ compartment_ht <-
            type = c("observed", "oe"),
            npc = 2L,
            standard = NULL,
+           smoothing = NULL,
            ...) {
     stopifnot(is(hic_matrix, "ht_table"))
     method <- match.arg(method)
@@ -473,7 +488,20 @@ compartment_ht <-
     if (!is.null(standard))
       comps %<>% flip_compartment(standard = standard, resol = resol)
 
-    bedtorch::as.bedtorch_table(comps)
+    comps <- bedtorch::as.bedtorch_table(comps)
+
+    if (is.null(smoothing) || smoothing == 1) {
+      return(comps)
+    }
+
+    comps[, score := bedtorch::rollmean(
+      score,
+      k = smoothing,
+      na_pad = TRUE,
+      na.rm = TRUE,
+      align = "center"
+    )]
+    comps
   }
 
 
