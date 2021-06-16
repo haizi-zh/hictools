@@ -11,7 +11,8 @@ compartment_juicer(
   norm = "NONE",
   chrom = NULL,
   resol = NULL,
-  standard = NULL
+  standard = NULL,
+  smoothing = NULL
 )
 }
 \arguments{

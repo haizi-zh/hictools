@@ -17,7 +17,7 @@ Imports:
     tidyverse,
     here,
     zoo,
-    bedtorch (>= 0.1.11.9009),
+    bedtorch (>= 0.1.11.9010),
     strawr (>= 0.0.3),
     purrr,
     ggplot2,

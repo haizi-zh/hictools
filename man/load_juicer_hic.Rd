@@ -8,7 +8,7 @@ load_juicer_hic(
   file_path,
   chrom,
   resol,
-  matrix = c("observed", "oe"),
+  type = c("observed", "oe"),
   norm = c("NONE", "KR", "VC", "VC_SQRT")
 )
 }
@@ -19,9 +19,9 @@ load_juicer_hic(
 
 \item{resol}{Resolution in base pair (BP)}
 
-\item{matrix}{Should be \code{observed} or \code{oe}}
-
 \item{norm}{See the manual of Juicer tools.}
+
+\item{matrix}{Should be \code{observed} or \code{oe}}
 }
 \value{
 A Hi-C object

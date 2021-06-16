@@ -348,14 +348,26 @@ load_hic <- function(file_path, format = NULL, resol = NULL, ...) {
 #' @param file_path Path to the output .hic file
 #' @param java Path to JVM. Default is \code{java}
 #' @param ref_genome Reference genome \code{hic_matrix} is using. Default is \code{hg19}
+#' @param norm Calculate specific normalizations. Default is VC,VC_SQRT,KR,SCALE
 #' @export
 dump_juicer_hic <-
   function(hic_matrix,
            file_path,
            juicertools = get_juicer_tools(),
            java = "java",
-           ref_genome = "hg19") {
+           ref_genome = "hg19",
+           norm = c("VC", "VC_SQRT", "KR", "SCALE")) {
+    norm <- match.arg(norm, several.ok = TRUE)
+    norm <- paste(norm, collapse = ",")
+    
     stopifnot(ref_genome == "hg19")
+    
+    # Usually, it doesn't make sense to dump the Hi-C data if it is not observed/NONE)
+    hic_type <- attr(hic_matrix, "type")
+    hic_norm <- attr(hic_matrix, "norm")
+    
+    if (!(identical(hic_type, "observed") && identical(hic_norm, "NONE")))
+      warning("Hi-C data is not observed/NONE")
 
     juicer_short_path <- tempfile(fileext = ".short")
     on.exit(unlink(juicer_short_path), add = TRUE)
@@ -363,7 +375,7 @@ dump_juicer_hic <-
     dump_juicer_short(hic_matrix, file_path = juicer_short_path)
 
     cmd <-
-      str_interp("${java} -jar ${juicertools} pre ${juicer_short_path} ${file_path} ${ref_genome}")
+      str_interp("${java} -jar ${juicertools} pre -k ${norm} ${juicer_short_path} ${file_path} ${ref_genome}")
     retcode <- system(cmd)
     if (retcode != 0) {
       stop(str_interp("Error in creating .hic , RET: ${retcode}, CMD: ${cmd}"))

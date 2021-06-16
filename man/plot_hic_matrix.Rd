@@ -6,7 +6,7 @@
 \usage{
 plot_hic_matrix(
   hic_matrix,
-  chrom,
+  chrom = NULL,
   control_hic_matrix = NULL,
   scale_factor = c(1, 1),
   norm = c(0, 1),
@@ -18,6 +18,11 @@ plot_hic_matrix(
   gamma = 2.3,
   tile_outline = NULL
 )
+}
+\arguments{
+\item{chrom}{Indicate which chromosome to process. If \code{NULL}, \code{hic_matrix}
+should contain only one chromosome, which will be used in the
+visualization.}
 }
 \description{
 Show a heatmap of the Hi-C data

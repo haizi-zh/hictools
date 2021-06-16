@@ -4,7 +4,7 @@
 \alias{plot_compartment}
 \title{Plot the A/B compartment profile}
 \usage{
-plot_compartment(comps, resol = NULL, full_scale = FALSE)
+plot_compartment(comps, resol = NULL, chrom = NULL, full_scale = FALSE)
 }
 \value{
 A ggplot2 object showing the compartments
