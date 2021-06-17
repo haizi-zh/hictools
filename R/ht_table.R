@@ -6,30 +6,15 @@ new_ht_table <-
   function(dt,
            resol,
            type = c("observed", "oe"),
-           norm = c("NONE", "KR", "VC", "VC_SQRT")) {
-    if (is(dt, "ht_table"))
-      return(dt)
-
-    supported_resol <- c(2.5e6L,
-                         1e6L,
-                         500e3L,
-                         250e3L,
-                         100e3L,
-                         50e3L,
-                         25e3L,
-                         10e3L,
-                         5e3L,
-                         2.5e3L,
-                         1e3L)
-    stopifnot(!is.null(resol))
+           norm = c("NONE", "KR", "VC", "VC_SQRT"),
+           genome = NULL) {
+    assert_that(is(dt, "data.frame"))
+    assert_that(is_null(genome) || is_character(genome))
     resol <- as.integer(resol)
-    stopifnot(resol %in% supported_resol)
-
     type <- match.arg(type)
     norm <- match.arg(norm)
-    if (!is(dt, "data.table"))
-      dt <- data.table::as.data.table(dt)
-
+    
+    dt <- data.table::copy(dt) %>% data.table::as.data.table()
     dt <- dt[order(chrom1, pos1, chrom2, pos2)]
 
     data.table::setattr(dt, "class", c("ht_table", class(dt)))
@@ -40,27 +25,27 @@ new_ht_table <-
     data.table::setattr(dt, "chrom", unique(as.character(c(
       dt$chrom1, dt$chrom2
     ))))
+    data.table::setattr(dt, "genome", genome)
 
     dt
   }
 
 
 validate_ht_table <- function(ht) {
-  stopifnot(!is.null(ht))
-  stopifnot(is(ht, "data.table"))
+  assert_that(!is_null(ht))
+  assert_that(is(ht, "data.table"))
 
   ht_names <- names(ht)
-  stopifnot(identical(ht_names[1:5], c("chrom1", "pos1", "chrom2", "pos2", "score")))
+  assert_that(are_equal(ht_names[1:5], c("chrom1", "pos1", "chrom2", "pos2", "score")))
   # Test column data types
-  stopifnot(colnames(ht)[c(1, 3)] %>% sapply(function(x)
-    is.character(ht[[x]])) %>% all())
-  stopifnot(colnames(ht)[c(2, 4)] %>% sapply(function(x)
-    is.integer(ht[[x]])) %>% all())
-  stopifnot(colnames(ht)[5] %>% sapply(function(x)
-    is.numeric(ht[[x]])) %>% all())
-
+  c(1, 3) %>%
+    walk(function(idx) assert_that(is_character(ht[[idx]])))
+  c(2, 4) %>%
+    walk(function(idx) assert_that(is_integer(ht[[idx]])))
+  assert_that(is_double(ht[[5]]))
+  
   chrom <- attr(ht, "chrom")
-  stopifnot(!is.null(chrom) && is.character(chrom) && length(chrom) == 1)
+  assert_that(is_character(chrom) && length(chrom) > 0)
 
   resol <- attr(ht, "resol")
   supported_resol <- c(2.5e6L,
@@ -74,13 +59,14 @@ validate_ht_table <- function(ht) {
                        5e3L,
                        2.5e3L,
                        1e3L)
-  stopifnot(!is.null(resol) && is.integer(resol) && resol %in% supported_resol)
+  assert_that(is_scalar_integer(resol) && resol %in% supported_resol)
 
   type <- attr(ht, "type")
-  stopifnot(!is.null(type) && type %in% c("observed", "oe"))
-
+  assert_that(is_scalar_character(type) && type %in% c("observed", "oe"))
   norm <- attr(ht, "norm")
-  stopifnot(!is.null(norm) && norm %in% c("NONE", "KR", "VC", "VC_SQRT"))
+  assert_that(is_scalar_character(norm) && norm %in% c("NONE", "KR", "VC", "VC_SQRT"))
+  genome <- attr(ht, "genome")
+  assert_that(is_null(genome) || is_scalar_character(genome))
 
   ht
 }
@@ -91,8 +77,9 @@ ht_table <-
   function(dt,
            resol,
            type = c("observed", "oe"),
-           norm = c("NONE", "KR", "VC", "VC_SQRT")) {
-    validate_ht_table(new_ht_table(dt, resol, type, norm))
+           norm = c("NONE", "KR", "VC", "VC_SQRT"),
+           genome = NULL) {
+    validate_ht_table(new_ht_table(dt, resol, type, norm, genome))
   }
 
 
@@ -104,10 +91,12 @@ print.ht_table <- function(x, ...) {
   type <- attr(x, "type")
   norm <- attr(x, "norm")
   resol <- attr(x, "resol")
+  genome <- attr(x, "genome") %||% "unspecified"
 
   cat("-------\n")
   cat(str_interp("Resolution: ${resol}\n"))
   cat(str_interp("Chrom: ${chrom}\n"))
   cat(str_interp("Type: ${type}\n"))
   cat(str_interp("Norm: ${norm}\n"))
+  cat(str_interp("Reference genome: ${genome}\n"))
 }

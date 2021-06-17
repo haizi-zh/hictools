@@ -28,19 +28,6 @@
 # Tools for analyzing and manipulating Hi-C dataset
 
 
-supported_resol <- c(2.5e6L,
-                     1e6L,
-                     500e3L,
-                     250e3L,
-                     100e3L,
-                     50e3L,
-                     25e3L,
-                     10e3L,
-                     5e3L,
-                     2.5e3L,
-                     1e3L)
-
-
 #' Load Hi-C dataset from a .hic file
 #'
 #' This function invokes Juicer tools for the dumping
@@ -55,38 +42,64 @@ load_juicer_hic <- function(file_path,
                             chrom,
                             resol,
                             type = c("observed", "oe"),
-                            norm = c("NONE", "KR", "VC", "VC_SQRT")) {
-  stopifnot(is.null(chrom) || length(chrom) == 1)
-  stopifnot(!is.null(resol) && resol %in% supported_resol)
+                            norm = c("NONE", "KR", "VC", "VC_SQRT"),
+                            genome = NULL) {
+  assert_that(is_scalar_character(file_path))
+  assert_that(is_character(chrom))
+  supported_resol <- c(5e6L,
+                       2.5e6L,
+                       1e6L,
+                       500e3L,
+                       250e3L,
+                       100e3L,
+                       50e3L,
+                       25e3L,
+                       10e3L,
+                       5e3L,
+                       2.5e3L,
+                       1e3L)
+  resol <- as.integer(resol)
+  assert_that(is_scalar_integer(resol) && resol %in% supported_resol)
+  
   type <- match.arg(type)
   norm <- match.arg(norm)
-
-  tryCatch({
-    dt <- strawr::straw(
+  assert_that(is_null(genome) || is_scalar_character(genome))
+  
+  chrom %>%
+    map(function(chrom) {
+      tryCatch({
+        dt <- strawr::straw(
+          norm = norm,
+          fname = file_path,
+          chr1loc = chrom,
+          chr2loc = chrom,
+          unit = "BP",
+          binsize = resol,
+          matrix = tolower(type)
+        ) %>%
+          data.table::as.data.table()
+        
+        dt <-
+          dt[, .(
+            chrom1 = chrom,
+            pos1 = x,
+            chrom2 = chrom,
+            pos2 = y,
+            score = counts
+          )]
+        dt[order(chrom1, pos1, chrom2, pos2)]
+      }, error = function(e) {
+        warning(str_interp("File doesn't have data for chromosome: ${chrom}"))
+        NULL
+      })
+    }) %>%
+    data.table::rbindlist() %>%
+    ht_table(
+      resol = as.integer(resol),
+      type = type,
       norm = norm,
-      fname = file_path,
-      chr1loc = chrom,
-      chr2loc = chrom,
-      unit = "BP",
-      binsize = resol,
-      matrix = tolower(type)
-    ) %>%
-      data.table::as.data.table()
-
-    dt <-
-      dt[, .(
-        chrom1 = chrom,
-        pos1 = x,
-        chrom2 = chrom,
-        pos2 = y,
-        score = counts
-      )]
-    dt[order(chrom1, pos1, chrom2, pos2)]
-  }, error = function(e) {
-    warning(str_interp("File doesn't have data for chromosome: ${chrom}"))
-    NULL
-  }) %>%
-    ht_table(resol = as.integer(resol), type = type, norm = norm)
+      genome = genome
+    )
 }
 
 
@@ -95,9 +108,14 @@ load_juicer_short <-
   function(file_path,
            chrom = NULL,
            type = c("observed", "oe"),
-           norm = c("NONE", "KR", "VC", "VC_SQRT")) {
+           norm = c("NONE", "KR", "VC", "VC_SQRT"),
+           genome = NULL) {
+    assert_that(is_scalar_character(file_path))
+    assert_that(is_null(chrom) || is_character(chrom))
+    
     type <- match.arg(type)
     norm <- match.arg(norm)
+    assert_that(is_null(genome) || is_scalar_character(genome))
 
     # 0 22 16000000 0 0 22 16000000 1 95
     data <- read_delim(
@@ -117,26 +135,43 @@ load_juicer_short <-
       data.table::as.data.table()
 
     resol <- guess_resol(data)
+    supported_resol <- c(5e6L,
+                         2.5e6L,
+                         1e6L,
+                         500e3L,
+                         250e3L,
+                         100e3L,
+                         50e3L,
+                         25e3L,
+                         10e3L,
+                         5e3L,
+                         2.5e3L,
+                         1e3L)
+    resol <- as.integer(resol)
+    assert_that(is_scalar_integer(resol) && resol %in% supported_resol)
 
-    if (!is.null(chrom)) {
+    if (!is_null(chrom)) {
       data <- data[data$chrom1 %in% chrom & data$chrom2 %in% chrom]
-    } else {
-      chrom <- c(data$chrom1, data$chrom2) %>% unique()
     }
-
+    
+    chrom <- c(data$chrom1, data$chrom2) %>% unique() %>% as.character()
     data %>% ht_table(resol = resol,
                       type = type,
-                      norm = norm)
+                      norm = norm,
+                      genome = genome)
   }
 
 #' @export
 load_juicer_dump <- function(file_path,
                              chrom,
                              type = c("observed", "oe"),
-                             norm = c("NONE", "KR", "VC", "VC_SQRT")) {
-  stopifnot(length(chrom) == 1)
+                             norm = c("NONE", "KR", "VC", "VC_SQRT"),
+                             genome = NULL) {
+  assert_that(is_scalar_character(file_path))
+  assert_that(is_scaler_character(chrom))
   type <- match.arg(type)
   norm <- match.arg(norm)
+  assert_that(is_scalar_character(genome))
 
   # 16000000        16000000        95.0
   data <- read_tsv(
@@ -149,8 +184,22 @@ load_juicer_dump <- function(file_path,
     data.table::as.data.table()
 
   resol <- guess_resol(data)
+  supported_resol <- c(5e6L,
+                       2.5e6L,
+                       1e6L,
+                       500e3L,
+                       250e3L,
+                       100e3L,
+                       50e3L,
+                       25e3L,
+                       10e3L,
+                       5e3L,
+                       2.5e3L,
+                       1e3L)
+  resol <- as.integer(resol)
+  assert_that(is_scalar_integer(resol) && resol %in% supported_resol)
 
-  data %>% ht_table(resol = resol, type = type, norm = norm)
+  data %>% ht_table(resol = resol, type = type, norm = norm, genome = genome)
 }
 
 
@@ -159,10 +208,13 @@ load_hic_genbed <- function(file_path,
                             resol = NULL,
                             chrom = NULL,
                             type = c("observed", "oe"),
-                            norm = c("NONE", "KR", "VC", "VC_SQRT")) {
-  stopifnot(is.null(chrom) || length(chrom) == 1)
+                            norm = c("NONE", "KR", "VC", "VC_SQRT"),
+                            genome = NULL) {
+  assert_that(is_scalar_character(file_path))
+  assert_that(is_null(chrom) || is_character(chrom))
   type <- match.arg(type)
   norm <- match.arg(norm)
+  assert_that(is_scalar_character(genome))
 
   data <-
     bedtorch::read_bed(file_path, range = chrom, use_gr = FALSE) %>%
@@ -180,8 +232,23 @@ load_hic_genbed <- function(file_path,
                          "score"
                        ))
   data <- data[, `:=`(chrom1 = as.character(chrom1), chrom2 = as.character(chrom2))]
+  
   if (is.null(resol))
     resol <- guess_resol(data)
+  supported_resol <- c(5e6L,
+                       2.5e6L,
+                       1e6L,
+                       500e3L,
+                       250e3L,
+                       100e3L,
+                       50e3L,
+                       25e3L,
+                       10e3L,
+                       5e3L,
+                       2.5e3L,
+                       1e3L)
+  resol <- as.integer(resol)
+  assert_that(is_scalar_integer(resol) && resol %in% supported_resol)
 
   data[, .(chrom1, pos1, chrom2, pos2, score)] %>%
     ht_table(resol = resol, type = type, norm = norm)
@@ -311,7 +378,10 @@ guess_resol <- function(data) {
       data[, unique(abs(pos2 - pos1))] %>% purrr::keep(function(x)
         x > 0) %>% min()
   }
-  stopifnot(length(resol) == 1)
+  
+  resol <- as.integer(resol)
+  assert_that(rlang::is_scalar_integer(resol))
+  assert_that(resol > 0)
   resol
 }
 
@@ -350,7 +420,7 @@ load_hic <- function(file_path, format = NULL, resol = NULL, ...) {
 #' @param ref_genome Reference genome \code{hic_matrix} is using. Default is \code{hg19}
 #' @param norm Calculate specific normalizations. Default is VC,VC_SQRT,KR,SCALE
 #' @export
-dump_juicer_hic <-
+write_juicer_hic <-
   function(hic_matrix,
            file_path,
            juicertools = get_juicer_tools(),
@@ -362,17 +432,17 @@ dump_juicer_hic <-
     
     stopifnot(ref_genome == "hg19")
     
-    # Usually, it doesn't make sense to dump the Hi-C data if it is not observed/NONE)
+    # Usually, it doesn't make sense to write the Hi-C data if it is not observed/NONE)
     hic_type <- attr(hic_matrix, "type")
     hic_norm <- attr(hic_matrix, "norm")
     
-    if (!(identical(hic_type, "observed") && identical(hic_norm, "NONE")))
+    if (!isTRUE(hic_type == "observed" && hic_norm == "NONE"))
       warning("Hi-C data is not observed/NONE")
 
     juicer_short_path <- tempfile(fileext = ".short")
     on.exit(unlink(juicer_short_path), add = TRUE)
 
-    dump_juicer_short(hic_matrix, file_path = juicer_short_path)
+    write_juicer_short(hic_matrix, file_path = juicer_short_path)
 
     cmd <-
       str_interp("${java} -jar ${juicertools} pre -k ${norm} ${juicer_short_path} ${file_path} ${ref_genome}")
@@ -384,7 +454,7 @@ dump_juicer_hic <-
 
 
 #' @export
-dump_juicer_short <- function(hic_matrix, file_path) {
+write_juicer_short <- function(hic_matrix, file_path) {
   # 0 22 16000000 0 0 22 16000000 1 95
   hic_matrix[, .(str1 = 0,
                  chrom1,
@@ -404,12 +474,42 @@ dump_juicer_short <- function(hic_matrix, file_path) {
   #   write_delim(file = file_path, col_names = FALSE, delim = " ")
 }
 
-
+#' Write the Hi-C dataset to disk in bedtorch table format
+#' 
+#' 
 #' @export
-dump_hic_genbed <- function(hic_matrix, file_path) {
+write_hic_bedtorch <- function(hic_matrix, file_path) {
+  assert_that(is(hic_matrix, "ht_table"))
+  assert_that(is_scalar_character(file_path))
+  
   resol <- attr(hic_matrix, "resol")
-  stopifnot(is.integer(resol) && resol > 0)
-
+  assert_that(is_scalar_integer(resol) && resol > 0)
+  
+  norm <- attr(hic_matrix, "norm")
+  assert_that(is_scalar_character(norm))
+  
+  type <- attr(hic_matrix, "type")
+  assert_that(is_scalar_character(type))
+  
+  genome <- attr(hic_matrix, "genome")
+  assert_that(is_null(genome) || is_scalar_character(genome))
+  
+  create_time <- lubridate::now() %>% format("%Y-%m-%dT%H:%M:%S%z")
+  hictools_version <- packageVersion("hictools")
+  comments <- c(
+    str_interp("create_time=${create_time}"),
+    str_interp("resolution=${resol}"),
+    str_interp("type=${type}"),
+    str_interp("norm=${norm}")
+  )
+  if (!is_null(genome))
+    comments <- c(comments, str_interp("genome=${genome}"))
+  
+  comments <- c(
+    comments,
+    str_interp("hictools_version=${hictools_version}")
+  )
+  
   hic_matrix <- hic_matrix[, .(
     chrom = chrom1,
     start = pos1,
@@ -420,7 +520,7 @@ dump_hic_genbed <- function(hic_matrix, file_path) {
     score = score
   )]
   bedtorch::as.bedtorch_table(hic_matrix) %>%
-    bedtorch::write_bed(file_path = file_path)
+    bedtorch::write_bed(file_path = file_path, comments = comments)
 }
 
 
@@ -484,7 +584,7 @@ convert_hic_matrix <- function(hic_matrix, chrom = NULL) {
 
 
 #' @export
-dump_hic_matrix <- function(mat, file_path, chrom = NULL) {
+write_hic_matrix <- function(mat, file_path, chrom = NULL) {
   # Detect all-NA rows/columns
   na_band <- apply(
     mat,
@@ -506,14 +606,14 @@ dump_hic_matrix <- function(mat, file_path, chrom = NULL) {
 
 #' Dump Hi-C data as .cool
 #' @export
-dump_cool <- function(hic_matrix, file_path, juicertools, java = "java", executable = "hicConvertFormat") {
-  # First dump as as a temporary genbed file, then call hicConvertFormat
+write_cool <- function(hic_matrix, file_path, juicertools, java = "java", executable = "hicConvertFormat") {
+  # First write as as a temporary genbed file, then call hicConvertFormat
   temp_hic <- tempfile(fileext = ".hic")
 
   tryCatch({
     resol <- attr(hic_matrix, "resol")
     hic_matrix %>%
-      dump_juicer_hic(file_path = temp_hic,
+      write_juicer_hic(file_path = temp_hic,
                       juicertools = juicertools,
                       java = java)
 
@@ -541,16 +641,16 @@ dump_cool <- function(hic_matrix, file_path, juicertools, java = "java", executa
 #' Dump Hi-C data to file
 #'
 #' @export
-dump_hic <- function(hic_matrix, file_path, format = NULL, ...) {
+write_hic <- function(hic_matrix, file_path, format = NULL, ...) {
   if (is.null(format)) {
     format <- guess_format(file_path)
   }
   if (format == "juicer_short") {
-    dump_juicer_short(hic_matrix, file_path)
+    write_juicer_short(hic_matrix, file_path)
   } else if (format == "juicer_hic") {
-    dump_juicer_hic(hic_matrix, file_path, ...)
+    write_juicer_hic(hic_matrix, file_path, ...)
   } else if (format == "genbed") {
-    dump_hic_genbed(hic_matrix, file_path)
+    write_hic_genbed(hic_matrix, file_path)
   } else {
     stop(str_interp("Invalid format ${format}"))
   }

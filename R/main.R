@@ -9,4 +9,6 @@
 #' @import ggplot2
 #' @import tidyverse
 #' @importFrom data.table `:=` setnames
+#' @importFrom rlang is_null is_character is_integer is_double is_scalar_character is_scalar_integer is_scalar_logical
+#' @importFrom assertthat assert_that are_equal
 NULL

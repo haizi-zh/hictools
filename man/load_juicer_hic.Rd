@@ -9,7 +9,8 @@ load_juicer_hic(
   chrom,
   resol,
   type = c("observed", "oe"),
-  norm = c("NONE", "KR", "VC", "VC_SQRT")
+  norm = c("NONE", "KR", "VC", "VC_SQRT"),
+  genome = NULL
 )
 }
 \arguments{

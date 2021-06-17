@@ -4,28 +4,23 @@
 #' @return A ggplot2 object showing the compartments
 plot_compartment <-
   function(comps,
-           resol = NULL,
            chrom = NULL,
            full_scale = FALSE) {
-    if (is(comps, "GRanges")) {
-      comps %<>%
-        GenomicRanges::as.data.frame() %>%
-        mutate(start = start - 1L)
-    }
+    assert_that(is(comps, "GRanges") || is(comps, "data.frame"))
+    if (is(comps, "GRanges"))
+      comps %<>% bedtorch::as.bedtorch_table()
 
     if (is.null(chrom)) {
-      chrom <- unique(comps$chrom)
+      chrom <- unique(comps$chrom %>% as.character())
     }
+    
     # Only deal with single-chromosome track
-    stopifnot(!is.null(chrom) && length(chrom) == 1)
+    assert_that(is_scalar_character(chrom))
+    
     pick_idx <- comps$chrom == chrom
     comps <- comps[pick_idx]
-
-    if (is.null(resol)) {
-      resol <- comps$start %>% diff() %>% min()
-    }
-    stopifnot()
-
+    
+    resol <- comps$start %>% diff() %>% min()
     p <- comps[!is.na(score)] %>%
       mutate(compartment = factor(ifelse(score > 0, "open", "close"), levels = c("open", "close"))) %>%
       ggplot(aes(x = start, y = score, fill = compartment)) +

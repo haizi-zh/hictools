@@ -4,13 +4,16 @@
 \alias{flip_compartment}
 \title{Flip the compartment score signs according to \code{standard}}
 \usage{
-flip_compartment(compartment, standard, resol)
+flip_compartment(compartment, standard)
 }
 \arguments{
-\item{standard}{Can be either \code{gene_density.hg19} or a BED-format data frame.
-If \code{gene_density.hg19}, the function will load the gene density data.
-Currently only supports a number of resolutions: 50k, 100k, 200k, 500k, 1m,
-2.5m.}
+\item{compartment}{A \code{GRanges} or \code{bedtorch_table} containing compartment scores.}
+
+\item{standard}{A \code{GRanges} or \code{bedtorch_table} of standard compartment scores.}
+}
+\value{
+The compartment. The signs of compartment scores may have been
+flipped based on \code{standard}.
 }
 \description{
 Flip the compartment score signs according to \code{standard}
