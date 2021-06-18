@@ -478,9 +478,10 @@ write_juicer_short <- function(hic_matrix, file_path) {
 #' 
 #' 
 #' @export
-write_hic_bedtorch <- function(hic_matrix, file_path) {
+write_hic_bedtorch <- function(hic_matrix, file_path, comments = NULL) {
   assert_that(is(hic_matrix, "ht_table"))
   assert_that(is_scalar_character(file_path))
+  assert_that(is_null(comments) || is_character(comments))
   
   resol <- attr(hic_matrix, "resol")
   assert_that(is_scalar_integer(resol) && resol > 0)
@@ -494,6 +495,7 @@ write_hic_bedtorch <- function(hic_matrix, file_path) {
   genome <- attr(hic_matrix, "genome")
   assert_that(is_null(genome) || is_scalar_character(genome))
   
+  user_comments <- comments
   create_time <- lubridate::now() %>% format("%Y-%m-%dT%H:%M:%S%z")
   hictools_version <- packageVersion("hictools")
   comments <- c(
@@ -507,7 +509,8 @@ write_hic_bedtorch <- function(hic_matrix, file_path) {
   
   comments <- c(
     comments,
-    str_interp("hictools_version=${hictools_version}")
+    str_interp("hictools_version=${hictools_version}"),
+    user_comments
   )
   
   hic_matrix <- hic_matrix[, .(

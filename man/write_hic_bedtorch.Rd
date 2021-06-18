@@ -4,7 +4,7 @@
 \alias{write_hic_bedtorch}
 \title{Write the Hi-C dataset to disk in bedtorch table format}
 \usage{
-write_hic_bedtorch(hic_matrix, file_path)
+write_hic_bedtorch(hic_matrix, file_path, comments = NULL)
 }
 \description{
 Write the Hi-C dataset to disk in bedtorch table format
