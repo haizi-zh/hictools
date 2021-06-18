@@ -7,9 +7,9 @@
 flip_compartment(compartment, standard)
 }
 \arguments{
-\item{compartment}{A \code{GRanges} or \code{bedtorch_table} containing compartment scores.}
+\item{compartment}{A \code{GRanges} or \code{data.frame} containing compartment scores.}
 
-\item{standard}{A \code{GRanges} or \code{bedtorch_table} of standard compartment scores.}
+\item{standard}{A \code{GRanges} or \code{data.frame} of standard compartment scores.}
 }
 \value{
 The compartment. The signs of compartment scores may have been

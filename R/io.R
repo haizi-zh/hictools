@@ -41,7 +41,7 @@
 load_juicer_hic <- function(file_path,
                             chrom,
                             resol,
-                            type = c("observed", "oe"),
+                            type = c("observed", "oe", "cofrag"),
                             norm = c("NONE", "KR", "VC", "VC_SQRT"),
                             genome = NULL) {
   assert_that(is_scalar_character(file_path))
@@ -107,7 +107,7 @@ load_juicer_hic <- function(file_path,
 load_juicer_short <-
   function(file_path,
            chrom = NULL,
-           type = c("observed", "oe"),
+           type = c("observed", "oe", "cofrag"),
            norm = c("NONE", "KR", "VC", "VC_SQRT"),
            genome = NULL) {
     assert_that(is_scalar_character(file_path))
@@ -164,7 +164,7 @@ load_juicer_short <-
 #' @export
 load_juicer_dump <- function(file_path,
                              chrom,
-                             type = c("observed", "oe"),
+                             type = c("observed", "oe", "cofrag"),
                              norm = c("NONE", "KR", "VC", "VC_SQRT"),
                              genome = NULL) {
   assert_that(is_scalar_character(file_path))
@@ -207,7 +207,7 @@ load_juicer_dump <- function(file_path,
 load_hic_genbed <- function(file_path,
                             resol = NULL,
                             chrom = NULL,
-                            type = c("observed", "oe"),
+                            type = c("observed", "oe", "cofrag"),
                             norm = c("NONE", "KR", "VC", "VC_SQRT"),
                             genome = NULL) {
   assert_that(is_scalar_character(file_path))
@@ -258,7 +258,7 @@ load_hic_genbed <- function(file_path,
 #' Load Hi-C data in cool format
 #' @export
 load_hic_cool <- function(file_path, chrom = NULL,
-                          type = c("observed", "oe"),
+                          type = c("observed", "oe", "cofrag"),
                           norm = c("NONE", "KR", "VC", "VC_SQRT"),
                           hdf5 = TRUE, cooler = "cooler") {
   stopifnot(hdf5)

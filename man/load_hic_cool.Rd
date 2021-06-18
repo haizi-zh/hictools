@@ -7,7 +7,7 @@
 load_hic_cool(
   file_path,
   chrom = NULL,
-  type = c("observed", "oe"),
+  type = c("observed", "oe", "cofrag"),
   norm = c("NONE", "KR", "VC", "VC_SQRT"),
   hdf5 = TRUE,
   cooler = "cooler"

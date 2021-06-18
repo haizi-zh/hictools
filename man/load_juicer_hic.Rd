@@ -8,7 +8,7 @@ load_juicer_hic(
   file_path,
   chrom,
   resol,
-  type = c("observed", "oe"),
+  type = c("observed", "oe", "cofrag"),
   norm = c("NONE", "KR", "VC", "VC_SQRT"),
   genome = NULL
 )

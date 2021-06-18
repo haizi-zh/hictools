@@ -5,7 +5,7 @@
 new_ht_table <-
   function(dt,
            resol,
-           type = c("observed", "oe"),
+           type = c("observed", "oe", "cofrag"),
            norm = c("NONE", "KR", "VC", "VC_SQRT"),
            genome = NULL) {
     assert_that(is(dt, "data.frame"))
@@ -56,7 +56,7 @@ validate_ht_table <- function(ht) {
   assert_that(is_scalar_integer(resol) && resol %in% supported_resol)
 
   type <- attr(ht, "type")
-  assert_that(is_scalar_character(type) && type %in% c("observed", "oe"))
+  assert_that(is_scalar_character(type) && type %in% c("observed", "oe", "cofrag"))
   norm <- attr(ht, "norm")
   assert_that(is_scalar_character(norm) && norm %in% c("NONE", "KR", "VC", "VC_SQRT"))
   genome <- attr(ht, "genome")
@@ -66,11 +66,20 @@ validate_ht_table <- function(ht) {
 }
 
 
+#' Construct an `ht_table` object, which represents a Hi-C-like dataset.
+#' 
+#' @param dt A `data.frame` input.
+#' @param resol A positive integer for the resolution (or bin size).
+#' @param type `observed` for raw counts, `oe` for "observation/expected" value,
+#'   and `cofrag` for cofragmentation contact score.
+#' @param norm Indicate whether any normalization method has been applied.
+#' @param genome A character scalar specifying the genome name. For example:
+#'   `hg37-1kg`. Can be `NULL` if no genome is specified.
 #' @export
 ht_table <-
   function(dt,
            resol,
-           type = c("observed", "oe"),
+           type = c("observed", "oe", "cofrag"),
            norm = c("NONE", "KR", "VC", "VC_SQRT"),
            genome = NULL) {
     validate_ht_table(new_ht_table(dt, resol, type, norm, genome))

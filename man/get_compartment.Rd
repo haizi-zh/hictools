@@ -11,9 +11,9 @@ get_compartment(
   java = "java",
   norm = c("NONE", "VC", "VC_SQRT", "KR", "SCALE"),
   chrom = NULL,
-  resol = NULL,
   standard = NULL,
-  smoothing = NULL
+  smoothing = NULL,
+  ...
 )
 }
 \arguments{
@@ -24,8 +24,6 @@ resolution directly from the \code{.hic} file.}
 \item{chrom}{A character vector indicating which chromosomes to run. If
 \code{NULL}, will calculate compartment scores for all chromosomes. However, in
 this case, \code{hic_matrx} cannot be the \code{.hic} file name.}
-
-\item{resol}{Resolution}
 }
 \description{
 Calculate compartment scores using Juicer tools

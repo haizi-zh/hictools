@@ -112,7 +112,7 @@ oe_juicer <-
       temp_hic <- tempfile(fileext = ".hic")
       hic_matrix %>%
         filter(chrom1 == chrom & chrom2 == chrom) %>%
-        dump_juicer_hic(
+        write_juicer_hic(
           file_path = temp_hic,
           juicertools = juicertools,
           java = java,
@@ -282,7 +282,6 @@ oe_ht <- function(hic_matrix,
 #' @param chrom A character vector indicating which chromosomes to run. If
 #'   `NULL`, will calculate compartment scores for all chromosomes. However, in
 #'   this case, `hic_matrx` cannot be the `.hic` file name.
-#' @param resol Resolution
 #' @export
 get_compartment <- function(hic_matrix,
                             method = c("juicer", "lieberman", "obs_exp", "nonzero", "average"),
@@ -290,9 +289,9 @@ get_compartment <- function(hic_matrix,
                             java = "java",
                             norm = c("NONE", "VC", "VC_SQRT", "KR", "SCALE"),
                             chrom = NULL,
-                            resol = NULL,
                             standard = NULL,
-                            smoothing = NULL) {
+                            smoothing = NULL,
+                            ...) {
   UseMethod("get_compartment")
 }
 
@@ -303,9 +302,9 @@ get_compartment.ht_table <- function(hic_matrix,
                                      java = "java",
                                      norm = c("NONE", "VC", "VC_SQRT", "KR", "SCALE"),
                                      chrom = NULL,
-                                     resol = NULL,
                                      standard = NULL,
-                                     smoothing = NULL) {
+                                     smoothing = NULL,
+                                     ...) {
   method <- match.arg(method)
   norm <- match.arg(norm)
   
@@ -315,11 +314,11 @@ get_compartment.ht_table <- function(hic_matrix,
     chrom <- as.character(chrom)
   assert_that(is_character(chrom) && length(chrom) >= 1)
   
-  resol <- as.integer(resol)
+  resol <- attr(hic_matrix, "resol")
   assert_that(is_scalar_integer(resol) && resol %in% c(500e3L, 1000e3L, 2500e3L, 5000e3L))
   
   assert_that(is_null(standard) ||
-                            is(standard, "GRanges") || is(standard, "bedtorch_table"))
+                            is(standard, "GRanges") || is(standard, "data.frame"))
   smoothing <-
     if (is_null(smoothing))
       NULL
@@ -335,7 +334,7 @@ get_compartment.ht_table <- function(hic_matrix,
     hic_file <- tempfile(fileext = ".hic")
     on.exit(file.remove(hic_file), add = TRUE)
     
-    hic_matrix %>% dump_hic(
+    hic_matrix %>% write_hic(
       file_path = hic_file,
       format = "juicer_hic",
       juicertools = juicertools,
@@ -356,7 +355,6 @@ get_compartment.ht_table <- function(hic_matrix,
     compartment_ht(hic_matrix = hic_matrix,
                    method = method,
                    chrom = chrom, 
-                   norm = norm,
                    standard = standard, 
                    smoothing = smoothing)
 }
@@ -369,13 +367,17 @@ get_compartment.character <- function(hic_matrix,
                                       java = "java",
                                       norm = c("NONE", "VC", "VC_SQRT", "KR", "SCALE"),
                                       chrom = NULL,
-                                      resol = NULL,
                                       standard = NULL,
-                                      smoothing = NULL) {
+                                      smoothing = NULL,
+                                      ...) {
   method <- match.arg(method)
   # Currently only support juicer tools
   assert_that(method == "juicer")
   norm <- match.arg(norm)
+  
+  var_args <- list(...)
+  resol <- var_args$resol
+  assert_that(is_scalar_integer(resol) && resol > 1, msg = "Must specify additional argument: resol")
   
   if (method == "juicer") {
     compartment_juicer_file(
@@ -409,7 +411,7 @@ compartment_juicer_file <- function(hic_file,
   assert_that(length(chrom) >= 1)
   resol <- as.integer(resol)
   assert_that(is_scalar_integer(resol) && resol %in% c(500e3L, 1000e3L, 2500e3L, 5000e3L))
-  assert_that(is_null(standard) || is(standard, "GRanges") || is(standard, "bedtorch_table"))
+  assert_that(is_null(standard) || is(standard, "GRanges") || is(standard, "data.frame"))
   smoothing <- if (is_null(smoothing)) NULL else as.integer(smoothing)
   assert_that(is_null(smoothing) || smoothing >= 1)
   
@@ -460,7 +462,7 @@ pearson_juicer <-
     temp_matrix <- tempfile(fileext = ".txt")
     on.exit(file.remove(c(temp_hic, temp_matrix)))
     tryCatch({
-      dump_juicer_hic(
+      write_juicer_hic(
         hic_matrix = hic_matrix,
         file_path = temp_hic,
         juicertools = juicertools,
@@ -507,8 +509,8 @@ pearson_ht <- function(hic_matrix, chrom, method = "lieberman") {
 
 #' Flip the compartment score signs according to `standard`
 #'
-#' @param compartment A `GRanges` or `bedtorch_table` containing compartment scores.
-#' @param standard A `GRanges` or `bedtorch_table` of standard compartment scores.
+#' @param compartment A `GRanges` or `data.frame` containing compartment scores.
+#' @param standard A `GRanges` or `data.frame` of standard compartment scores.
 #' @return The compartment. The signs of compartment scores may have been
 #'   flipped based on `standard`.
 #' @export
@@ -526,7 +528,7 @@ flip_compartment.data.frame <- function(compartment, standard) {
 #' @export
 flip_compartment.GRanges <- function(compartment, standard) {
   if (inherits(standard, "data.frame"))
-    standard %<>% bedtorch::as.GenomicRanges()
+    suppressWarnings(standard %<>% bedtorch::as.GenomicRanges() %>% GenomicRanges::trim())
   
   compartment <- unique(GenomicRanges::seqnames(compartment)) %>%
     map(function(chrom) {
@@ -574,7 +576,7 @@ hicexplorer_pca <- function(hic_matrix,
 
   tryCatch({
     hic_matrix %>%
-      dump_cool(
+      write_cool(
         file_path = hic_cool,
         juicertools = juicertools,
         java = java,
@@ -618,3 +620,93 @@ hicexplorer_pca <- function(hic_matrix,
     unlink(c(hic_cool, pc_bedgraph, pm, oem))
   })
 }
+
+# hictools's own implementation of compartment analysis, as opposed to juicer
+compartment_ht <-
+  function(hic_matrix,
+           method = c("lieberman", "obs_exp", "nonzero", "average"),
+           chrom = NULL,
+           npc = 2L,
+           standard = NULL,
+           smoothing = NULL,
+           ...) {
+    assert_that(is(hic_matrix, "ht_table"))
+    method <- match.arg(method)
+    assert_that(is_scalar_integer(npc) && npc >= 1)
+    
+    assert_that(is_null(standard) ||
+                  is(standard, "GRanges") || is(standard, "data.frame"))
+    smoothing <-
+      if (is_null(smoothing))
+        NULL
+    else
+      as.integer(smoothing)
+    assert_that(is_null(smoothing) || (is_scalar_integer(smoothing) && smoothing > 1))
+    
+    if (is_null(chrom))
+      chrom <-
+        unique(c(
+          as.character(hic_matrix$chrom1),
+          as.character(hic_matrix$chrom2)
+        ))
+    assert_that(is_character(chrom) && length(chrom) >= 1)
+    
+    resol <- attr(hic_matrix, "resol")
+    assert_that(is_scalar_integer(resol) && resol > 0)
+    type <- attr(hic_matrix, "type")
+    assert_that(is_scalar_character(type))
+    
+    if (type == "observed")
+      hic_matrix <- oe_ht(hic_matrix, method = method, ...)
+    
+    comps <- chrom %>% map(function(chrom) {
+      hic_matrix <- hic_matrix[chrom1 == chrom & chrom2 == chrom]
+      pos_start <- min(c(hic_matrix$pos1, hic_matrix$pos2))
+      
+      mc <- hic_matrix %>%
+        convert_hic_matrix() %>%
+        cor(use = "pairwise.complete.obs")
+      
+      all_na <-
+        seq.int(ncol(mc)) %>% map_lgl(function(idx) {
+          all(is.na(mc[, idx]))
+        })
+      
+      pc_subset <-
+        mc[!all_na,!all_na] %>% prcomp(scale. = TRUE) %>% .$rotation %>% .[, 1:npc]
+      pc <- matrix(rep(NA, ncol(mc) * npc), ncol = npc)
+      pc[!all_na, ] <- pc_subset
+      
+      result <- data.table::data.table(
+        chrom = chrom,
+        start = as.integer((seq_along(pc[, 1]) - 1) * resol + pos_start)
+      )
+      result[, `:=`(end = as.integer(start + resol), score = pc[, 1])]
+      result[, score := ifelse(is.infinite(score) | is.nan(score), NA, score)]
+      data.table::setkey(result, "chrom", "start", "end")
+      
+      seq.int(npc) %>% walk(function(pc_idx) {
+        result[, (paste0("PC", pc_idx)) := pc[, pc_idx]]
+        # result[[paste0("PC", pc_idx)]] <<- pc[, pc_idx]
+      })
+      
+      result
+    }) %>%
+      data.table::rbindlist()
+    
+    if (!is_null(standard))
+      comps %<>% flip_compartment(standard = standard)
+    
+    attr(comps, "genome") <- attr(hic_matrix, "genome")
+    comps <- bedtorch::as.bedtorch_table(comps)
+    if (isTRUE(smoothing > 1))
+      comps[, score := zoo::rollmean(
+        score,
+        k = smoothing,
+        na.pad = TRUE,
+        na.rm = TRUE,
+        align = "center"
+      )]
+      
+    suppressWarnings(comps %>% bedtorch::as.GenomicRanges() %>% GenomicRanges::trim())
+  }
