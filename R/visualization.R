@@ -57,9 +57,9 @@ plot_hic_matrix <- function(hic_matrix,
                             matrix = "observed",
                             gamma = 2.3,
                             tile_outline = NULL) {
-  if (is.null(chrom))
-    chrom <- attr(hic_matrix, "chrom")
-  stopifnot(!is.null(chrom) && length(chrom) == 1)
+  if (is_null(chrom))
+    chrom <- unique(c(hic_matrix$chrom1, hic_matrix$chrom2) %>% as.character())
+  assert_that(is_scalar_character(chrom))
 
   resol <- attr(hic_matrix, "resol")
   stopifnot(resol > 0)

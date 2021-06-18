@@ -22,9 +22,6 @@ new_ht_table <-
     data.table::setattr(dt, "resol", resol)
     data.table::setattr(dt, "type", type)
     data.table::setattr(dt, "norm", norm)
-    data.table::setattr(dt, "chrom", unique(as.character(c(
-      dt$chrom1, dt$chrom2
-    ))))
     data.table::setattr(dt, "genome", genome)
 
     dt
@@ -44,9 +41,6 @@ validate_ht_table <- function(ht) {
     walk(function(idx) assert_that(is_integer(ht[[idx]])))
   assert_that(is_double(ht[[5]]))
   
-  chrom <- attr(ht, "chrom")
-  assert_that(is_character(chrom) && length(chrom) > 0)
-
   resol <- attr(ht, "resol")
   supported_resol <- c(2.5e6L,
                        1e6L,
@@ -87,7 +81,6 @@ ht_table <-
 print.ht_table <- function(x, ...) {
   NextMethod()
 
-  chrom <- paste(attr(x, "chrom"), collapse = " ")
   type <- attr(x, "type")
   norm <- attr(x, "norm")
   resol <- attr(x, "resol")
@@ -95,7 +88,6 @@ print.ht_table <- function(x, ...) {
 
   cat("-------\n")
   cat(str_interp("Resolution: ${resol}\n"))
-  cat(str_interp("Chrom: ${chrom}\n"))
   cat(str_interp("Type: ${type}\n"))
   cat(str_interp("Norm: ${norm}\n"))
   cat(str_interp("Reference genome: ${genome}\n"))
