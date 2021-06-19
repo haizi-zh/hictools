@@ -513,17 +513,24 @@ write_hic_bedtorch <- function(hic_matrix, file_path, comments = NULL) {
     user_comments
   )
   
-  hic_matrix <- hic_matrix[, .(
-    chrom = chrom1,
-    start = pos1,
-    end = pos1 + resol,
-    chrom2,
-    start2 = pos2,
-    end2 = pos2 + resol,
-    score = score
-  )]
-  bedtorch::as.bedtorch_table(hic_matrix) %>%
-    bedtorch::write_bed(file_path = file_path, comments = comments)
+  hic_matrix <- local({
+    meta_fields <- colnames(hic_matrix) %>% tail(n = -5)
+    
+    dt1 <- hic_matrix[, .(
+      chrom = chrom1,
+      start = pos1,
+      end = pos1 + resol,
+      chrom2,
+      start2 = pos2,
+      end2 = pos2 + resol,
+      score = score
+    )]
+    
+    dt2 <- hic_matrix[, ..meta_fields]
+    cbind(dt1, dt2)
+  }) %>% bedtorch::as.bedtorch_table()
+  
+  bedtorch::write_bed(hic_matrix, file_path = file_path, comments = comments)
 }
 
 

@@ -12,7 +12,8 @@ compartment_juicer_file(
   chrom = NULL,
   resol = NULL,
   standard = NULL,
-  smoothing = NULL
+  smoothing = NULL,
+  genome = NULL
 )
 }
 \description{

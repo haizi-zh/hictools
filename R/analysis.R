@@ -378,6 +378,8 @@ get_compartment.character <- function(hic_matrix,
   var_args <- list(...)
   resol <- var_args$resol
   assert_that(is_scalar_integer(resol) && resol > 1, msg = "Must specify additional argument: resol")
+  genome <- var_args$genome
+  assert_that(is_null(genome) || is_scalar_character(genome))
   
   if (method == "juicer") {
     compartment_juicer_file(
@@ -388,7 +390,8 @@ get_compartment.character <- function(hic_matrix,
       chrom = chrom,
       resol = resol,
       standard = standard,
-      smoothing = smoothing
+      smoothing = smoothing,
+      genome = genome
     )
   }
 }
@@ -402,7 +405,8 @@ compartment_juicer_file <- function(hic_file,
                                     chrom = NULL,
                                     resol = NULL,
                                     standard = NULL,
-                                    smoothing = NULL) {
+                                    smoothing = NULL,
+                                    genome = NULL) {
   assert_that(is_scalar_character(hic_file) && endsWith(hic_file, ".hic"))
   assert_that(is_scalar_character(java))
   assert_that(is_scalar_character(juicertools))
@@ -414,6 +418,7 @@ compartment_juicer_file <- function(hic_file,
   assert_that(is_null(standard) || is(standard, "GRanges") || is(standard, "data.frame"))
   smoothing <- if (is_null(smoothing)) NULL else as.integer(smoothing)
   assert_that(is_null(smoothing) || smoothing >= 1)
+  assert_that(is_null(genome) || is_scalar_character(genome))
   
   comps <- chrom %>% map(function(chrom) {
     ev_file <- tempfile()
@@ -436,6 +441,7 @@ compartment_juicer_file <- function(hic_file,
   }) %>%
     data.table::rbindlist()
   
+  attr(comps, "genome") <- genome
   comps <- suppressWarnings(bedtorch::as.GenomicRanges(comps[!is.na(score)]) %>% GenomicRanges::trim())
   
   if (!is_null(standard))

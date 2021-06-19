@@ -31,20 +31,27 @@ is_valid_resol <- function(resol) {
 #' @export
 concat_hic <- function(hic_list) {
   assert_that(rlang::is_list(hic_list))
-  hic_list %>% walk(~ assert_that(is(., "ht_table")))
+  hic_list %>% walk( ~ assert_that(is(., "ht_table")))
   
   if (length(hic_list) == 0)
     return(hic_list)
   
   # Should be compatible
-  resol <- hic_list %>% map_int(~ attr(., "resol")) %>% unique()
+  resol <- hic_list %>% map_int( ~ attr(., "resol")) %>% unique()
   assert_that(is_scalar_integer(resol))
-  norm <- hic_list %>% map_chr(~ attr(., "norm")) %>% unique()
+  norm <- hic_list %>% map_chr( ~ attr(., "norm")) %>% unique()
   assert_that(is_scalar_character(norm))
-  type <- hic_list %>% map_chr(~ attr(., "type")) %>% unique()
+  type <- hic_list %>% map_chr( ~ attr(., "type")) %>% unique()
   assert_that(is_scalar_character(type))
-  genome <- hic_list %>% map_chr(~ attr(., "genome")) %>% unique()
+  # genome can be NULL
+  genome <-
+    hic_list %>% map( ~ attr(., "genome")) %>% unlist() %>% unique()
   assert_that(is_null(genome) || is_scalar_character(genome))
   
-  data.table::rbindlist(l = hic_list) %>% hictools::ht_table(resol = resol, type = type, norm = norm, genome = genome) %>% str
+  data.table::rbindlist(l = hic_list) %>% hictools::ht_table(
+    resol = resol,
+    type = type,
+    norm = norm,
+    genome = genome
+  )
 }
