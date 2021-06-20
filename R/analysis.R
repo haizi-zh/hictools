@@ -326,7 +326,7 @@ get_compartment.ht_table <- function(hic_matrix,
     as.integer(smoothing)
   assert_that(is_null(smoothing) || smoothing >= 1)
   
-  genome <- attr(hic_matrix, "genome") %||% genome
+  genome <- attr(hic_matrix, "genome")
   assert_that(is_null(genome) || is_scalar_character(genome))
   
   if (method == "juicer") {
@@ -349,7 +349,8 @@ get_compartment.ht_table <- function(hic_matrix,
       chrom = chrom,
       resol = resol,
       standard = standard,
-      smoothing = smoothing
+      smoothing = smoothing,
+      genome = genome
     )
   } else 
     compartment_ht(hic_matrix = hic_matrix,
@@ -647,7 +648,7 @@ compartment_ht <-
         NULL
     else
       as.integer(smoothing)
-    assert_that(is_null(smoothing) || (is_scalar_integer(smoothing) && smoothing > 1))
+    assert_that(is_null(smoothing) || (is_scalar_integer(smoothing) && smoothing >= 1))
     
     if (is_null(chrom))
       chrom <-

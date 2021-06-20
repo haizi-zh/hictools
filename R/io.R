@@ -436,8 +436,8 @@ write_juicer_hic <-
     hic_type <- attr(hic_matrix, "type")
     hic_norm <- attr(hic_matrix, "norm")
     
-    if (!isTRUE(hic_type == "observed" && hic_norm == "NONE"))
-      warning("Hi-C data is not observed/NONE")
+    # if (!isTRUE(hic_type == "observed" && hic_norm == "NONE"))
+    #   warning("Hi-C data is not observed/NONE")
 
     juicer_short_path <- tempfile(fileext = ".short")
     on.exit(unlink(juicer_short_path), add = TRUE)
