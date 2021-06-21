@@ -165,3 +165,47 @@ plot_hic_matrix <- function(hic_matrix,
   else
     p + scale_fill_gradientn(colors = hic_colors$colors, values = hic_colors$values)
 }
+
+
+#' Get the scatter plot between two compartment tracks
+#' @export
+plot_compartment_scatter <-
+  function(x,
+           y,
+           size = 0.1,
+           alpha = 0.5,
+           add = "reg.line",
+           add.params = list(fill = "lightgray"),
+           conf.int = TRUE,
+           stat_cor_method = c("pearson", "spearman", "kendall"),
+           ...) {
+    x <- bedtorch::as.GenomicRanges(x)
+    y <- bedtorch::as.GenomicRanges(y)
+    assert_that(is_null(stat_cor_method) || is_character(stat_cor_method))
+    if (!is_null(stat_cor_method))
+      stat_cor_method <- match.arg(stat_cor_method[1], choices = c("pearson", "spearman", "kendall"))
+    
+    hits <- GenomicRanges::findOverlaps(x, y)
+    score_x <- x[S4Vectors::queryHits(hits)]$score
+    score_y <- y[S4Vectors::subjectHits(hits)]$score
+    
+    p <- tibble(x = x[S4Vectors::queryHits(hits)]$score,
+           y = y[S4Vectors::subjectHits(hits)]$score) %>%
+      ggpubr::ggscatter(
+        x = "x",
+        y = "y",
+        size = size,
+        alpha = alpha,
+        add = add,
+        # Add regressin line
+        add.params = add.params,
+        # Customize reg. line
+        conf.int = conf.int,
+        ...
+      ) 
+    
+    if (!is_null(stat_cor_method))
+      p <- p + ggpubr::stat_cor(method = stat_cor_method)
+    
+    p
+  }

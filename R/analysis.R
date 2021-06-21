@@ -717,3 +717,30 @@ compartment_ht <-
       
     suppressWarnings(comps %>% bedtorch::as.GenomicRanges() %>% GenomicRanges::trim())
   }
+
+
+#' Calculate correlation coefficiencies between two compartment tracks
+#' 
+#' @param x Compartment scores.
+#' @param y Compartment scores.
+#' @param smooth A vector of positive integers. If `NULL`, will not apply smoothing.
+#' @return A named list of correlation coefficients
+#' @export
+comp_correlation <-
+  function(x,
+           y,
+           correlation = c("pearson", "spearman", "kendall")) {
+    x <- bedtorch::as.GenomicRanges(x)
+    y <- bedtorch::as.GenomicRanges(y)
+    
+    correlation <- match.arg(correlation, several.ok = TRUE)
+    
+    hits <- GenomicRanges::findOverlaps(x, y)
+    score_x <- x[S4Vectors::queryHits(hits)]$score
+    score_y <- y[S4Vectors::subjectHits(hits)]$score
+    
+    result <- correlation %>% 
+      map(~ cor(score_x, score_y, use = "complete.obs", method = .))
+    names(result) <- correlation
+    result
+  }
