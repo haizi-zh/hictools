@@ -761,13 +761,18 @@ compartment_ht <-
         convert_hic_matrix() %>%
         cor(use = "pairwise.complete.obs")
       
+      # We need to exclude rows/columns which are all NAs
       all_na <-
         seq.int(ncol(mc)) %>% map_lgl(function(idx) {
           all(is.na(mc[, idx]))
         })
       
-      pc_subset <-
-        mc[!all_na,!all_na] %>% prcomp(scale. = TRUE) %>% .$rotation %>% .[, 1:npc]
+      # Sometimes, a single data point can be NA. This is different from the above case,
+      # where the whole row/column is NA
+      # We need to set these data points to 0 for PCA to work
+      mc2 <- mc[!all_na,!all_na]
+      mc2[which(is.na(mc2))] <- 0
+      pc_subset <- prcomp(mc2, scale. = TRUE) %>% .$rotation %>% .[, 1:npc]
       pc <- matrix(rep(NA, ncol(mc) * npc), ncol = npc)
       pc[!all_na, ] <- pc_subset
       
