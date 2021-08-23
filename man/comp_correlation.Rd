@@ -2,20 +2,18 @@
 % Please edit documentation in R/analysis.R
 \name{comp_correlation}
 \alias{comp_correlation}
-\title{Calculate correlation coefficiencies between two compartment tracks}
+\title{Calculate correlation coefficients between two compartment tracks}
 \usage{
 comp_correlation(x, y, correlation = c("pearson", "spearman", "kendall"))
 }
 \arguments{
-\item{x}{Compartment scores.}
+\item{x}{Compartment scores. Should be of bedtorch format.}
 
 \item{y}{Compartment scores.}
-
-\item{smooth}{A vector of positive integers. If \code{NULL}, will not apply smoothing.}
 }
 \value{
 A named list of correlation coefficients
 }
 \description{
-Calculate correlation coefficiencies between two compartment tracks
+Calculate correlation coefficients between two compartment tracks
 }

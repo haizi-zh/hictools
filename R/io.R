@@ -203,22 +203,33 @@ load_juicer_dump <- function(file_path,
 }
 
 
+#' @param score_col Specify which column represents cofrag scores. Default is NULL, 
+#' @param scale_score Scale scales to the interval [0, 1]
+#' which indicates the 7th column
 #' @export
 load_hic_genbed <- function(file_path,
                             resol = NULL,
                             chrom = NULL,
                             type = c("observed", "oe", "cofrag"),
                             norm = c("NONE", "KR", "VC", "VC_SQRT"),
+                            score_col = NULL,
+                            scale_score = TRUE,
                             genome = NULL) {
   assert_that(is_scalar_character(file_path))
   assert_that(is_null(chrom) || is_character(chrom))
   type <- match.arg(type)
   norm <- match.arg(norm)
-  assert_that(is_scalar_character(genome))
+  assert_that(is_scalar_character(genome) || is_null(genome))
 
   data <-
-    bedtorch::read_bed(file_path, range = chrom, use_gr = FALSE) %>%
+    bedtorch::read_bed(file_path, range = chrom, use_gr = FALSE, genome = genome) %>%
     data.table::as.data.table()
+  
+  # If the column bootstrap exists, this indicates there are multiple scores for each bin pair 
+  # due to multiple bootstrap iterations.
+  # In this case, we only load scores from the first bootstrap
+  if ("bootstrap" %in% colnames(data))
+    data <- data[bootstrap == 1]
 
   data.table::setnames(data,
                        1:7,
@@ -231,6 +242,14 @@ load_hic_genbed <- function(file_path,
                          "end2",
                          "score"
                        ))
+  
+  if (!is_null(score_col)) {
+    data[, score := data[[score_col]]]
+  }
+  
+  if (scale_score)
+    data[, score := (score - min(score, na.rm = TRUE)) / (max(score, na.rm = TRUE) - min(score, na.rm = TRUE))]
+  
   data <- data[, `:=`(chrom1 = as.character(chrom1), chrom2 = as.character(chrom2))]
   
   if (is.null(resol))
@@ -251,7 +270,7 @@ load_hic_genbed <- function(file_path,
   assert_that(is_scalar_integer(resol) && resol %in% supported_resol)
 
   data[, .(chrom1, pos1, chrom2, pos2, score)] %>%
-    ht_table(resol = resol, type = type, norm = norm)
+    ht_table(resol = resol, type = type, norm = norm, genome = genome)
 }
 
 

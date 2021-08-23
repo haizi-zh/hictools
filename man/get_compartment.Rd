@@ -7,12 +7,9 @@
 get_compartment(
   hic_matrix,
   method = c("juicer", "lieberman", "obs_exp", "nonzero", "average"),
-  juicertools = get_juicer_tools(),
-  java = "java",
-  norm = c("NONE", "VC", "VC_SQRT", "KR", "SCALE"),
   chrom = NULL,
   standard = NULL,
-  smoothing = NULL,
+  smooth = NULL,
   ...
 )
 }
