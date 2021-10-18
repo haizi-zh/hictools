@@ -336,11 +336,20 @@ get_compartment.ht_table <- function(hic_matrix,
     java <- args$java %||% "java"
     juicertools <- args$juicertools %||% get_juicer_tools()
     
+    
+    if (genome %in% c("hs37-1kg", "hg19", "GRCh37"))
+      juicer_genome <- "hg19"
+    else if (genome %in% c("hg38", "GRCh38"))
+      juicer_genome <- "hg38"
+    else
+      stop(genome)
+    
     hic_matrix %>% write_hic(
       file_path = hic_file,
       format = "juicer_hic",
       juicertools = juicertools,
-      java = java
+      java = java,
+      ref_genome = juicer_genome
     )
     
     comps <- get_compartment.character(
@@ -466,6 +475,7 @@ compartment_juicer_file <- function(hic_file,
       str_interp(
         "${java} -jar ${juicertools} eigenvector ${norm} ${hic_file} ${chrom} BP ${resol} ${ev_file}"
       )
+    logging::loginfo(cmd)
     retcode <- system(cmd)
     assertthat::assert_that(retcode == 0,
                             msg = str_interp("Error in compartment calculation , RET: ${retcode}, CMD: ${cmd}"))

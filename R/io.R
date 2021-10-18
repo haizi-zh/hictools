@@ -444,12 +444,13 @@ write_juicer_hic <-
            file_path,
            juicertools = get_juicer_tools(),
            java = "java",
-           ref_genome = "hg19",
+           ref_genome = c("hg19", "hg38"),
            norm = c("VC", "VC_SQRT", "KR", "SCALE")) {
     norm <- match.arg(norm, several.ok = TRUE)
     norm <- paste(norm, collapse = ",")
     
-    stopifnot(ref_genome == "hg19")
+    ref_genome <- match.arg(ref_genome)
+    # stopifnot(ref_genome == "hg19")
     
     # Usually, it doesn't make sense to write the Hi-C data if it is not observed/NONE)
     hic_type <- attr(hic_matrix, "type")
@@ -465,6 +466,7 @@ write_juicer_hic <-
 
     cmd <-
       str_interp("${java} -jar ${juicertools} pre -r 2500000,1000000,500000,250000,100000,50000 -k ${norm} ${juicer_short_path} ${file_path} ${ref_genome}")
+    logging::loginfo(cmd)
     retcode <- system(cmd)
     if (retcode != 0) {
       stop(str_interp("Error in creating .hic , RET: ${retcode}, CMD: ${cmd}"))
