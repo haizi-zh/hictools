@@ -219,7 +219,7 @@ oe_ht <- function(hic_matrix,
     hic_matrix %<>%
       filter(chrom1 == chrom & chrom2 == chrom) %>%
       mutate(distbin = abs(pos1 - pos2) %/% resol)
-
+    
     max_bin_idx <-
       max(c(hic_matrix$pos1, hic_matrix$pos2)) %/% resol + 1
     min_bin_idx <-
@@ -228,11 +228,11 @@ oe_ht <- function(hic_matrix,
       strat_dist(hic_matrix,
                  smoothing = smoothing,
                  min_nonzero = min_nonzero)
-
+    
     joined <- inner_join(x = hic_matrix,
                          y = weight,
                          by = "distbin")
-
+    
     (if (method == "obs_exp") {
       joined %>%
         mutate(observed = score, score = score / (total / (max_bin_idx - min_bin_idx + 1 - distbin)))
@@ -297,7 +297,7 @@ get_compartment <- function(hic_matrix,
 
 #' @export
 get_compartment.ht_table <- function(hic_matrix,
-                                     method = c("juicer", "lieberman", "obs_exp", "nonzero", "average"),
+                                     method = c("juicer", "lieberman", "obs_exp", "nonzero", "average", "fanc"),
                                      chrom = NULL,
                                      standard = NULL,
                                      smooth = NULL,
@@ -327,7 +327,7 @@ get_compartment.ht_table <- function(hic_matrix,
   genome <- attr(hic_matrix, "genome")
   assert_that(is_null(genome) || is_scalar_character(genome))
   
-  if (isTRUE(method == "juicer")) {
+  if (method %in% c("juicer", "fanc")) {
     # Save hic to a temporary .hic file, and call juicer tools to get compartments
     hic_file <- tempfile(fileext = ".hic")
     on.exit(file.remove(hic_file), add = TRUE)
@@ -335,7 +335,6 @@ get_compartment.ht_table <- function(hic_matrix,
     args <- list(...)
     java <- args$java %||% "java"
     juicertools <- args$juicertools %||% get_juicer_tools()
-    
     
     if (genome %in% c("hs37-1kg", "hg19", "GRCh37"))
       juicer_genome <- "hg19"
@@ -389,15 +388,15 @@ get_compartment.ht_table <- function(hic_matrix,
 
 #' @export
 get_compartment.character <- function(hic_matrix,
-                            method = c("juicer", "lieberman", "obs_exp", "nonzero", "average"),
-                            chrom = NULL,
-                            standard = NULL,
-                            smooth = NULL,
-                            resol,
-                            genome = NULL,
-                            juicertools = get_juicer_tools(),
-                            java = "java",
-                            norm = c("NONE", "VC", "VC_SQRT", "KR", "SCALE")) {
+                                      method = c("juicer", "lieberman", "obs_exp", "nonzero", "average", "fanc"),
+                                      chrom = NULL,
+                                      standard = NULL,
+                                      smooth = NULL,
+                                      resol,
+                                      genome = NULL,
+                                      juicertools = get_juicer_tools(),
+                                      java = "java",
+                                      norm = c("NONE", "VC", "VC_SQRT", "KR", "SCALE")) {
   
   method <- match.arg(method)
   norm <- match.arg(norm)
@@ -412,6 +411,14 @@ get_compartment.character <- function(hic_matrix,
       chrom = chrom,
       resol = resol,
       standard = standard,
+      genome = genome
+    )
+  } else if (method == "fanc") {
+    # No need to load the .hic file. Instead, directly call compartments using Juicer tools
+    comps <- compartment_fanc(
+      hic_file = hic_matrix,
+      norm = norm,
+      resol = resol,
       genome = genome
     )
   } else {
@@ -446,7 +453,7 @@ get_compartment.character <- function(hic_matrix,
   
   return(comps)
 }
-  
+
 
 #' Get compartment using Juicer tools, from an existing .hic file
 compartment_juicer_file <- function(hic_file,
@@ -499,6 +506,89 @@ compartment_juicer_file <- function(hic_file,
 }
 
 
+#' Get compartment using FANC, from an existing .hic file
+compartment_fanc <- function(hic_file,
+                             norm = c("NONE", "VC", "VC_SQRT", "KR", "SCALE"),
+                             resol,
+                             ev = 1:2,
+                             genome = c("hs37-1kg", "GRCh37", "GRCh38")) {
+  assert_that(is_scalar_character(hic_file) && endsWith(hic_file, ".hic"))
+  norm <- match.arg(norm)
+  resol <- as.integer(resol)
+  assert_that(is_scalar_integer(resol) && resol %in% c(250e3L, 500e3L, 1000e3L))
+  assert_that(is_null(genome) || is_scalar_character(genome))
+  
+  ab_file <- tempfile(fileext = ".ab")
+  on.exit(unlink(ab_file), add = TRUE)
+  
+  ev_tracks <- ev %>% map(function(ev) {
+    ev_file <- tempfile(fileext = ".bed")
+    on.exit(unlink(ev_file), add = TRUE)
+    
+    cmd <-
+      str_interp("fanc compartments -v ${ev_file} -i ${ev} ${hic_file}@${resol%/%1000}kb@${norm} ${ab_file}")
+    logging::loginfo(cmd)
+    retcode <- system(cmd)
+    assert_that(retcode == 0,
+                msg = str_interp("Error in compartment calculation , RET: ${retcode}, CMD: ${cmd}"))
+    
+    
+    gr <- bedtorch::read_bed(ev_file)
+    # fanc output is 1-based bed
+    GenomicRanges::start(gr) <- GenomicRanges::start(gr) - 1
+    genome_info <- bedtorch::get_seqinfo(genome)
+    seqlevels(gr, pruning.mode = "coarse") <- seqlevels(genome_info)
+    seqinfo(gr) <- genome_info
+    # GenomeInfoDb::keepSeqlevels(gr, value = bedtorch::get_seqinfo("GRCh38") %>% seqnames(), pruning.mode = "coarse")
+    mcols(gr) <- data.frame(score = gr$V5)
+    gr[gr$score != 0 & gr$score != 1]
+  })
+  
+  # Combine eigenvectors
+  comps <- purrr::reduce(seq_along(ev_tracks), .init = NULL, .f = function(x, idx) {
+    y <- ev_tracks[[idx]]
+    
+    if (is_null(x)) {
+      mcols(y) <- data.frame(ev_1 = y$score)
+      return(y)
+    }
+    
+    hits <- findOverlaps(x, y, type = "equal")
+    x <- x[queryHits(hits)]
+    mcols_x <- mcols(x)
+    mcols_x[[paste0("ev_", idx)]] <- y[subjectHits(hits)]$score
+    mcols(x) <- mcols_x
+    
+    return(x)
+  })
+  
+  gc_track <- suppressWarnings({
+    local({
+      data_env <- env()
+      data_name <- str_interp("gc.${genome}.${resol%/%1000}kbp")
+      data(list = data_name, package = "hictools", envir = data_env)
+      data_env[[data_name]]
+    })
+  })
+  gc_track$score <- gc_track$gc
+  gc_track$gc <- NULL
+  
+  if (!is_null(gc_track)) {
+    comps <- normalize_compartment(comps, standard = gc_track, score_cols = colnames(mcols(comps)))
+
+    score <- comps$score
+    comps$score <- NULL
+    mcols(comps) <- cbind(data.frame(score = score), mcols(comps))
+  } else {
+    score <- mcols(comps)[, 1]
+    comps$score <- NULL
+    mcols(comps) <- cbind(data.frame(score = score), mcols(comps))
+  }
+  
+  return(comps)
+}
+
+
 #' Calculate O/E Pearson correlation matrix using Juicer tools
 #'
 #' @export
@@ -511,7 +601,7 @@ pearson_juicer <-
     stopifnot(length(chrom) == 1)
     resol <- attr(hic_matrix, "resol")
     pos_start <- min(c(hic_matrix$pos1, hic_matrix$pos2))
-
+    
     temp_hic <- tempfile(fileext = ".hic")
     temp_matrix <- tempfile(fileext = ".txt")
     on.exit(file.remove(c(temp_hic, temp_matrix)))
@@ -530,7 +620,7 @@ pearson_juicer <-
       )
       cat(cmd, "\n")
       system(cmd)
-
+      
       lines <- read_lines(temp_matrix) %>% str_trim()
       dim <- length(lines)
       mat <- lines %>%
@@ -539,7 +629,7 @@ pearson_juicer <-
         as.numeric() %>%
         matrix(nrow = dim, byrow = TRUE)
       mat[is.nan(mat)] <- NA
-
+      
       mat %>% convert_matrix_hic(chrom = chrom, resol = resol, pos_start = 0)
     }, finally = {
     })
@@ -643,7 +733,8 @@ normalize_compartment.GRanges <- function(compartment, standard, score_cols = c(
       # PC2 should be sufficiently larger than PC1 to be picked as compartment scores
       pick_index <- which.max(abs(cor_values))
       if (isTRUE(pick_index != 1) && abs(cor_values[pick_index]) - abs(cor_values[1]) > 0.5) {
-        logging::logwarn(str_interp("Compartment for chromosome ${chrom}: choosing PC${pick_index}"))
+        correlation_str <- paste(abs(cor_values), collapse = ", ")
+        logging::logwarn(str_interp("Compartment for chromosome ${chrom}: choosing PC${pick_index}, correlation: ${correlation_str}"))
       } else
         pick_index <- 1
       
