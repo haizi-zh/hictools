@@ -284,13 +284,13 @@ oe_ht <- function(hic_matrix,
 #'   this case, `hic_matrx` cannot be the `.hic` file name.
 #' @export
 get_compartment <- function(hic_matrix,
-                            method = c("juicer", "lieberman", "obs_exp", "nonzero", "average"),
+                            method = c("juicer", "lieberman", "obs_exp", "nonzero", "average", "fanc"),
                             chrom = NULL,
                             standard = NULL,
                             smooth = NULL,
                             # juicertools = get_juicer_tools(),
                             # java = "java",
-                            # norm = c("NONE", "VC", "VC_SQRT", "KR", "SCALE"),
+                            norm = c("NONE", "VC", "VC_SQRT", "KR", "SCALE"),
                             ...) {
   UseMethod("get_compartment")
 }
@@ -830,7 +830,7 @@ compartment_ht <-
            method = c("lieberman", "obs_exp", "nonzero", "average"),
            chrom = NULL,
            npc = 2L,
-           standard = NULL) {
+           genome = c("hs37-1kg", "GRCh37", "GRCh38")) {
     assert_that(is(hic_matrix, "ht_table"))
     method <- match.arg(method)
     assert_that(is_scalar_integer(npc) && npc >= 1)
@@ -893,6 +893,32 @@ compartment_ht <-
     }) %>%
       data.table::rbindlist() %>%
       bedtorch::as.bedtorch_table(attr(hic_matrix, "genome"))
+    
+    gc_track <- suppressWarnings({
+      local({
+        data_env <- env()
+        data_name <- str_interp("gc.${genome}.${resol%/%1000}kbp")
+        data(list = data_name, package = "hictools", envir = data_env)
+        data_env[[data_name]]
+      })
+    })
+    gc_track$score <- gc_track$gc
+    gc_track$gc <- NULL
+    
+    comps <- suppressWarnings(comps %>% bedtorch::as.GenomicRanges() %>% GenomicRanges::trim())
+    
+    if (!is_null(gc_track)) {
+      comps <- normalize_compartment(comps, standard = gc_track, score_cols = colnames(mcols(comps)))
+      
+      score <- comps$score
+      comps$score <- NULL
+      mcols(comps) <- cbind(data.frame(score = score), mcols(comps))
+    } else {
+      score <- mcols(comps)[, 1]
+      comps$score <- NULL
+      mcols(comps) <- cbind(data.frame(score = score), mcols(comps))
+    }
+    
     
     if (!is_null(standard))
       comps %<>% normalize_compartment(standard = standard, score_cols = paste0("PC", seq.int(npc)))
