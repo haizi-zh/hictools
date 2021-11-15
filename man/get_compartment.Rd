@@ -6,21 +6,43 @@
 \usage{
 get_compartment(
   hic_matrix,
-  method = c("juicer", "lieberman", "obs_exp", "nonzero", "average"),
+  method = c("juicer", "lieberman", "obs_exp", "nonzero", "average", "fanc"),
   chrom = NULL,
   standard = NULL,
-  smooth = NULL,
+  oe = c("juicer", "ht", "as-is"),
+  juicertools = get_juicer_tools(),
+  java = "java",
+  norm = c("NONE", "VC", "VC_SQRT", "KR", "SCALE"),
   ...
 )
 }
 \arguments{
-\item{hic_matrix}{Either a \code{hic_matrix} object, or the path of the \code{.hic}
-name. If a file path, \code{resol} cannot be NULL since we can't infer
-resolution directly from the \code{.hic} file.}
+\item{hic_matrix}{Either a \code{ht_table} object, or the path of the \code{.hic} name.
+If a file path, \code{resol} cannot be NULL since we can't infer resolution
+directly from the \code{.hic} file.}
 
 \item{chrom}{A character vector indicating which chromosomes to run. If
 \code{NULL}, will calculate compartment scores for all chromosomes. However, in
 this case, \code{hic_matrx} cannot be the \code{.hic} file name.}
+
+\item{standard}{A standard compartment track which is used to "orient"
+principal components. If \code{NULL}, no orienting will be performed. Can be the
+name of a pre-computed reference track, e.g. gc.GRCh38.500kbp (see
+\code{data(package = "hictools")}), or path to the bed file for the reference
+track, or a \code{GRanges} object.}
+
+\item{oe}{The method to compute observed/expected values. \code{"juicer"}
+indicates using using the values computed by Juicer tools. \code{"ht"} indicates
+using hictools for the calculation. \code{"as-is"} indicates observed values
+will be used as observed/expected ones, thus skipping the OE calculation.
+This may be useful when the input is cofrag matrix rather than standard
+Hi-C data. Won't take effect if \code{method} is \code{"juicer"}.}
+
+\item{norm}{The norm used for calculating compartment scores. If \code{hic_matrix}
+is not a \code{.hic} file name, \code{norm} will be ignored.}
+
+\item{resol}{Resolution of the matrix. Must be a positive integer when the
+input is a Hi-C file.}
 }
 \description{
 Calculate compartment scores using Juicer tools

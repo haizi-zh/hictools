@@ -1,6 +1,6 @@
 Package: hictools
 Title: Home-made handy tools for Hi-C
-Version: 0.1.4.4
+Version: 0.1.5.1
 Authors@R: 
     person(given = "Haizi",
            family = "Zheng",
@@ -12,7 +12,7 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.1.1
+RoxygenNote: 7.1.2
 Imports: 
     tidyverse,
     here,
@@ -30,7 +30,7 @@ Suggests:
     logging,
     here
 Config/testthat/edition: 3
-Remotes:  
+Remotes: 
     aidenlab/straw/R,
     haizi-zh/bedtorch,
     bioc::rhdf5,

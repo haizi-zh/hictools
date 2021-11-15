@@ -44,26 +44,13 @@ load_juicer_hic <- function(file_path,
                             type = c("observed", "oe", "cofrag"),
                             norm = c("NONE", "KR", "VC", "VC_SQRT"),
                             genome = NULL) {
-  assert_that(is_scalar_character(file_path))
+  assert_that(is_scalar_character(file_path) && assertthat::is.readable(file_path))
   assert_that(is_character(chrom))
-  supported_resol <- c(5e6L,
-                       2.5e6L,
-                       1e6L,
-                       500e3L,
-                       250e3L,
-                       100e3L,
-                       50e3L,
-                       25e3L,
-                       10e3L,
-                       5e3L,
-                       2.5e3L,
-                       1e3L)
-  resol <- as.integer(resol)
-  assert_that(is_scalar_integer(resol) && resol %in% supported_resol)
+  assert_that(is_valid_resol(resol))
   
   type <- match.arg(type)
   norm <- match.arg(norm)
-  assert_that(is_null(genome) || is_scalar_character(genome))
+  assert_that(is_null(genome) || !is_null(bedtorch::get_seqinfo(genome)))
   
   chrom %>%
     map(function(chrom) {
@@ -135,20 +122,7 @@ load_juicer_short <-
       data.table::as.data.table()
 
     resol <- guess_resol(data)
-    supported_resol <- c(5e6L,
-                         2.5e6L,
-                         1e6L,
-                         500e3L,
-                         250e3L,
-                         100e3L,
-                         50e3L,
-                         25e3L,
-                         10e3L,
-                         5e3L,
-                         2.5e3L,
-                         1e3L)
-    resol <- as.integer(resol)
-    assert_that(is_scalar_integer(resol) && resol %in% supported_resol)
+    assert_that(is_valid_resol(resol))
 
     if (!is_null(chrom)) {
       data <- data[data$chrom1 %in% chrom & data$chrom2 %in% chrom]
@@ -184,25 +158,14 @@ load_juicer_dump <- function(file_path,
     data.table::as.data.table()
 
   resol <- guess_resol(data)
-  supported_resol <- c(5e6L,
-                       2.5e6L,
-                       1e6L,
-                       500e3L,
-                       250e3L,
-                       100e3L,
-                       50e3L,
-                       25e3L,
-                       10e3L,
-                       5e3L,
-                       2.5e3L,
-                       1e3L)
-  resol <- as.integer(resol)
-  assert_that(is_scalar_integer(resol) && resol %in% supported_resol)
+  assert_that(is_valid_resol(resol))
 
   data %>% ht_table(resol = resol, type = type, norm = norm, genome = genome)
 }
 
 
+#' Load Hi-C data in BED format
+#' 
 #' @param score_col Specify which column represents cofrag scores. Default is NULL, 
 #' @param scale_score Scale scales to the interval [0, 1]
 #' which indicates the 7th column
@@ -254,20 +217,8 @@ load_hic_genbed <- function(file_path,
   
   if (is.null(resol))
     resol <- guess_resol(data)
-  supported_resol <- c(5e6L,
-                       2.5e6L,
-                       1e6L,
-                       500e3L,
-                       250e3L,
-                       100e3L,
-                       50e3L,
-                       25e3L,
-                       10e3L,
-                       5e3L,
-                       2.5e3L,
-                       1e3L)
-  resol <- as.integer(resol)
-  assert_that(is_scalar_integer(resol) && resol %in% supported_resol)
+  
+  assert_that(is_valid_resol(resol))
 
   data[, .(chrom1, pos1, chrom2, pos2, score)] %>%
     ht_table(resol = resol, type = type, norm = norm, genome = genome)
@@ -464,8 +415,12 @@ write_juicer_hic <-
 
     write_juicer_short(hic_matrix, file_path = juicer_short_path)
 
+    resol <- attr(hic_matrix, "resol")
+    assert_that(is_valid_resol(resol))
+    resol_list <- keep(allowed_resol(), ~ . >= resol) %>% paste(collapse = ",")
+    
     cmd <-
-      str_interp("${java} -jar ${juicertools} pre -r 2500000,1000000,500000,250000,100000,50000 -k ${norm} ${juicer_short_path} ${file_path} ${ref_genome}")
+      str_interp("${java} -jar ${juicertools} pre -r ${resol_list} -k ${norm} ${juicer_short_path} ${file_path} ${ref_genome}")
     logging::loginfo(cmd)
     retcode <- system(cmd)
     if (retcode != 0) {

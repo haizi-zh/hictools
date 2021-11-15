@@ -8,8 +8,8 @@
 #' @import ggplot2
 #' @importFrom data.table setnames setkey fread fwrite shift setDT data.table rbindlist as.data.table
 #' @importFrom GenomicRanges makeGRangesFromDataFrame findOverlaps mcols `mcols<-` pintersect ranges `ranges<-` width
-#' @importFrom GenomeInfoDb seqnames seqlengths seqinfo `seqinfo<-` seqlevels `seqlevels<-`
-#' @importFrom S4Vectors from to
+#' @importFrom GenomeInfoDb seqnames `seqnames<-` seqlengths seqinfo `seqinfo<-` seqlevels `seqlevels<-`
+#' @importFrom S4Vectors from to queryHits subjectHits
 #' @importFrom rlang is_null is_character is_integer is_double is_scalar_character is_scalar_integer is_scalar_logical
 #' @importFrom assertthat assert_that are_equal
 NULL

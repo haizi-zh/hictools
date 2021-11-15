@@ -2,7 +2,7 @@
 % Please edit documentation in R/analysis.R
 \name{compartment_juicer_file}
 \alias{compartment_juicer_file}
-\title{Get compartment using Juicer tools, from an existing .hic file}
+\title{Compute compartment scores using Juicer tools, from an existing .hic file}
 \usage{
 compartment_juicer_file(
   hic_file,
@@ -11,10 +11,9 @@ compartment_juicer_file(
   norm = c("NONE", "VC", "VC_SQRT", "KR", "SCALE"),
   chrom = NULL,
   resol = NULL,
-  standard = NULL,
   genome = NULL
 )
 }
 \description{
-Get compartment using Juicer tools, from an existing .hic file
+Compute compartment scores using Juicer tools, from an existing .hic file
 }

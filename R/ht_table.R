@@ -42,18 +42,7 @@ validate_ht_table <- function(ht) {
   assert_that(is_double(ht[[5]]))
   
   resol <- attr(ht, "resol")
-  supported_resol <- c(2.5e6L,
-                       1e6L,
-                       500e3L,
-                       250e3L,
-                       100e3L,
-                       50e3L,
-                       25e3L,
-                       10e3L,
-                       5e3L,
-                       2.5e3L,
-                       1e3L)
-  assert_that(is_scalar_integer(resol) && resol %in% supported_resol)
+  assert_that(is_valid_resol(resol))
 
   type <- attr(ht, "type")
   assert_that(is_scalar_character(type) && type %in% c("observed", "oe", "cofrag"))

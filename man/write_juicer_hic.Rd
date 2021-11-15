@@ -9,7 +9,7 @@ write_juicer_hic(
   file_path,
   juicertools = get_juicer_tools(),
   java = "java",
-  ref_genome = "hg19",
+  ref_genome = c("hg19", "hg38"),
   norm = c("VC", "VC_SQRT", "KR", "SCALE")
 )
 }

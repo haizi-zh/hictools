@@ -2,14 +2,23 @@
 % Please edit documentation in R/utils.R
 \name{concat_hic}
 \alias{concat_hic}
-\title{Concatenate a list of \code{ht_table} objects}
+\title{Concatenate a list of \code{ht_table}}
 \usage{
 concat_hic(hic_list)
+}
+\arguments{
+\item{hic_list}{A list of \code{ht_table}}
 }
 \value{
 A concatenated \code{ht_table}
 }
 \description{
+Under the hood, an \code{ht_table} is a \code{data.table}, so you can
+concatenate a list of \code{ht_table} by \code{data.tables::rbindlist}.
+However, the result is no long an \code{ht_table}, but a \code{data.table}. In order to
+preserve \code{ht_table} properties, \code{concat_hic} is preferable.
+}
+\details{
 Hi-C data in the list should be compatible. In other words, they should have
 the same \code{resol}, \code{norm}, \code{type}, and optionally, \code{genome}.
 }
