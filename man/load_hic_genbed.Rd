@@ -16,6 +16,9 @@ load_hic_genbed(
 )
 }
 \arguments{
+\item{resol}{An integer for the resolution. If \code{NULL}, the resolution will be
+guessed from the Hi-C data.}
+
 \item{score_col}{Specify which column represents cofrag scores. Default is NULL,}
 
 \item{scale_score}{Scale scales to the interval \link{0, 1}

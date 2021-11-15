@@ -4,15 +4,18 @@
 \alias{comp_correlation}
 \title{Calculate correlation coefficients between two compartment tracks}
 \usage{
-comp_correlation(x, y, correlation = c("pearson", "spearman", "kendall"))
+comp_correlation(x, y, method = c("pearson", "spearman", "kendall"))
 }
 \arguments{
-\item{x}{Compartment scores. Should be of bedtorch format.}
+\item{x}{Compartment scores.}
 
 \item{y}{Compartment scores.}
+
+\item{method}{Type of correlation scores. Must be one of \code{"pearson"},
+\code{"spearman"}, and \code{"kendall"}.}
 }
 \value{
-A named list of correlation coefficients
+A data frame for correlation.
 }
 \description{
 Calculate correlation coefficients between two compartment tracks

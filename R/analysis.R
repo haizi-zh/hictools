@@ -338,7 +338,7 @@ get_compartment.ht_table <- function(hic_matrix,
   resol <- attr(hic_matrix, "resol")
   assert_that(is_valid_resol(resol) && resol >= 100e3L)
   
-  genome <- attr(hic, "genome")
+  genome <- attr(hic_matrix, "genome")
   
   if (method == "juicer" || oe == "juicer") {
     # Need to conver the input to .hic files if we need to calculate Juicer
@@ -476,7 +476,6 @@ get_compartment.character <- function(hic_matrix,
       juicer_type <- "observed"
     }
     
-    browser()
     comps <- chrom %>%
       map(function(chrom) {
         load_juicer_hic(
@@ -1001,26 +1000,40 @@ hicexplorer_pca <- function(hic_matrix,
 
 
 #' Calculate correlation coefficients between two compartment tracks
-#' 
-#' @param x Compartment scores. Should be of bedtorch format.
+#'
+#' @param x Compartment scores.
 #' @param y Compartment scores.
-#' @return A named list of correlation coefficients
+#' @param method Type of correlation scores. Must be one of `"pearson"`,
+#'   `"spearman"`, and `"kendall"`.
+#' @return A data frame for correlation.
 #' @export
 comp_correlation <-
   function(x,
            y,
-           correlation = c("pearson", "spearman", "kendall")) {
-    x <- suppressWarnings(bedtorch::as.GenomicRanges(x) %>% GenomicRanges::trim())
-    y <- suppressWarnings(bedtorch::as.GenomicRanges(y) %>% GenomicRanges::trim())
+           method = c("pearson", "spearman", "kendall")) {
+    assert_that(is(x, "GRanges"))
+    assert_that(is(y, "GRanges"))
     
-    correlation <- match.arg(correlation, several.ok = TRUE)
+    chroms <- intersect(seqnames(x), seqnames(y))
+    seqlevels(x, pruning.mode = "coarse") <- chroms
+    seqlevels(y, pruning.mode = "coarse") <- chroms
+    seqinfo(y) <- seqinfo(x)
     
-    hits <- GenomicRanges::findOverlaps(x, y)
-    score_x <- x[S4Vectors::queryHits(hits)]$score
-    score_y <- y[S4Vectors::subjectHits(hits)]$score
+    method <- match.arg(method, several.ok = TRUE)
     
-    result <- correlation %>% 
-      map(~ cor(score_x, score_y, use = "complete.obs", method = .))
-    names(result) <- correlation
-    result
+    expand_grid(
+      method = method,
+      chrom = chroms
+    ) %>%
+      pmap_dfr(function(method, chrom) {
+        x <- x[seqnames(x) == chrom]
+        y <- y[seqnames(x) == chrom]
+        
+        hits <- findOverlaps(x, y)
+        score_x <- mcols(x[queryHits(hits)])[[1]]
+        score_y <- mcols(y[subjectHits(hits)])[[1]]
+        cor_score <- cor(score_x, score_y, use = "complete.obs", method = method)
+        
+        tibble(chrom = chrom, method = method, cor = cor_score)
+      })
   }

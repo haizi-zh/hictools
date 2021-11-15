@@ -166,6 +166,8 @@ load_juicer_dump <- function(file_path,
 
 #' Load Hi-C data in BED format
 #' 
+#' @param resol An integer for the resolution. If `NULL`, the resolution will be
+#'   guessed from the Hi-C data.
 #' @param score_col Specify which column represents cofrag scores. Default is NULL, 
 #' @param scale_score Scale scales to the interval [0, 1]
 #' which indicates the 7th column
