@@ -341,7 +341,7 @@ get_compartment.ht_table <- function(hic_matrix,
   genome <- attr(hic_matrix, "genome")
   
   if (method == "juicer" || oe == "juicer") {
-    # Need to conver the input to .hic files if we need to calculate Juicer
+    # Need to convert the input to .hic files if we need to calculate Juicer
     # eigenvectors, or use Juicer tools to get oe scores.
     
     # Save hic to a temporary .hic file, and call juicer tools to get compartments

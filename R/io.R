@@ -373,13 +373,12 @@ guess_resol <- function(data) {
 #' @export
 load_hic <-
   function(file_path,
-           format = c("juicer_short", "juicer_dump", "juicer_hic", "genbed", "cool"),
+           format = c("auto", "juicer_short", "juicer_dump", "juicer_hic", "genbed", "cool"),
            resol = NULL,
            ...) {
-  if (is.null(format)) {
+  format <- match.arg(format)
+  if (format == "auto") {
     format <- guess_format(file_path)
-  } else {
-    format <- match.arg(format)
   }
   if (format == "juicer_short") {
     data <- load_juicer_short(file_path, ...)
