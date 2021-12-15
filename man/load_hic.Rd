@@ -4,7 +4,12 @@
 \alias{load_hic}
 \title{Load Hi-C dataset from file}
 \usage{
-load_hic(file_path, format = NULL, resol = NULL, ...)
+load_hic(
+  file_path,
+  format = c("juicer_short", "juicer_dump", "juicer_hic", "genbed", "cool"),
+  resol = NULL,
+  ...
+)
 }
 \description{
 Load Hi-C dataset from file

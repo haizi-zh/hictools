@@ -4,13 +4,7 @@
 \alias{ht_table}
 \title{Construct an \code{ht_table} object, which represents a Hi-C-like dataset.}
 \usage{
-ht_table(
-  dt,
-  resol,
-  type = c("observed", "oe", "cofrag"),
-  norm = c("NONE", "KR", "VC", "VC_SQRT"),
-  genome = NULL
-)
+ht_table(dt, resol, type, norm, genome)
 }
 \arguments{
 \item{dt}{A \code{data.frame} input.}

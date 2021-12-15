@@ -5,7 +5,7 @@
 new_ht_table <-
   function(dt,
            resol,
-           type = c("observed", "oe", "cofrag"),
+           type = c("observed", "oe", "expected", "cofrag"),
            norm = c("NONE", "KR", "VC", "VC_SQRT"),
            genome = NULL) {
     assert_that(is(dt, "data.frame"))
@@ -45,7 +45,7 @@ validate_ht_table <- function(ht) {
   assert_that(is_valid_resol(resol))
 
   type <- attr(ht, "type")
-  assert_that(is_scalar_character(type) && type %in% c("observed", "oe", "cofrag"))
+  assert_that(is_scalar_character(type) && type %in% c("observed", "oe", "expected", "cofrag"))
   norm <- attr(ht, "norm")
   assert_that(is_scalar_character(norm) && norm %in% c("NONE", "KR", "VC", "VC_SQRT"))
   genome <- attr(ht, "genome")
@@ -68,9 +68,9 @@ validate_ht_table <- function(ht) {
 ht_table <-
   function(dt,
            resol,
-           type = c("observed", "oe", "cofrag"),
-           norm = c("NONE", "KR", "VC", "VC_SQRT"),
-           genome = NULL) {
+           type,
+           norm,
+           genome) {
     validate_ht_table(new_ht_table(dt, resol, type, norm, genome))
   }
 

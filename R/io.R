@@ -41,7 +41,7 @@
 load_juicer_hic <- function(file_path,
                             chrom,
                             resol,
-                            type = c("observed", "oe", "cofrag"),
+                            type = c("observed", "oe", "expected", "cofrag"),
                             norm = c("NONE", "KR", "VC", "VC_SQRT"),
                             genome = NULL) {
   assert_that(is_scalar_character(file_path) && assertthat::is.readable(file_path))
@@ -52,19 +52,29 @@ load_juicer_hic <- function(file_path,
   norm <- match.arg(norm)
   assert_that(is_null(genome) || !is_null(bedtorch::get_seqinfo(genome)))
   
+  straw_read <- function(chrom, type) {
+    strawr::straw(
+      norm = norm,
+      fname = file_path,
+      chr1loc = chrom,
+      chr2loc = chrom,
+      unit = "BP",
+      binsize = resol,
+      matrix = type
+    ) %>%
+      data.table::as.data.table()
+  }
+  
   chrom %>%
     map(function(chrom) {
       tryCatch({
-        dt <- strawr::straw(
-          norm = norm,
-          fname = file_path,
-          chr1loc = chrom,
-          chr2loc = chrom,
-          unit = "BP",
-          binsize = resol,
-          matrix = tolower(type)
-        ) %>%
-          data.table::as.data.table()
+        if (type == "expected") {
+          dt_obs <- straw_read(chrom = chrom, type = "observed")
+          dt_oe <- straw_read(chrom = chrom, type = "oe")
+          dt <- merge(dt_obs, dt_oe, by = c("x", "y"))[
+            , .(x, y, counts = counts.x / counts.y)]
+        } else
+          dt <- straw_read(chrom = chrom, type = type)
         
         dt <-
           dt[, .(
@@ -94,7 +104,7 @@ load_juicer_hic <- function(file_path,
 load_juicer_short <-
   function(file_path,
            chrom = NULL,
-           type = c("observed", "oe", "cofrag"),
+           type = c("observed", "oe", "expected", "cofrag"),
            norm = c("NONE", "KR", "VC", "VC_SQRT"),
            genome = NULL) {
     assert_that(is_scalar_character(file_path))
@@ -138,7 +148,7 @@ load_juicer_short <-
 #' @export
 load_juicer_dump <- function(file_path,
                              chrom,
-                             type = c("observed", "oe", "cofrag"),
+                             type = c("observed", "oe", "expected", "cofrag"),
                              norm = c("NONE", "KR", "VC", "VC_SQRT"),
                              genome = NULL) {
   assert_that(is_scalar_character(file_path))
@@ -175,7 +185,7 @@ load_juicer_dump <- function(file_path,
 load_hic_genbed <- function(file_path,
                             resol = NULL,
                             chrom = NULL,
-                            type = c("observed", "oe", "cofrag"),
+                            type = c("observed", "oe", "expected", "cofrag"),
                             norm = c("NONE", "KR", "VC", "VC_SQRT"),
                             score_col = NULL,
                             scale_score = TRUE,
@@ -361,9 +371,15 @@ guess_resol <- function(data) {
 #' Load Hi-C dataset from file
 #'
 #' @export
-load_hic <- function(file_path, format = NULL, resol = NULL, ...) {
+load_hic <-
+  function(file_path,
+           format = c("juicer_short", "juicer_dump", "juicer_hic", "genbed", "cool"),
+           resol = NULL,
+           ...) {
   if (is.null(format)) {
     format <- guess_format(file_path)
+  } else {
+    format <- match.arg(format)
   }
   if (format == "juicer_short") {
     data <- load_juicer_short(file_path, ...)
@@ -372,7 +388,7 @@ load_hic <- function(file_path, format = NULL, resol = NULL, ...) {
   } else if (format == "juicer_hic") {
     data <- load_juicer_hic(file_path, resol = resol, ...)
   } else if (format == "genbed") {
-    data <- load_hic_genbed(file_path = file_path)
+    data <- load_hic_genbed(file_path = file_path, ...)
   } else if (format == "cool") {
     data <- load_hic_cool(file_path = file_path, ...)
   } else {

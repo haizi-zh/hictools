@@ -8,7 +8,7 @@ load_hic_genbed(
   file_path,
   resol = NULL,
   chrom = NULL,
-  type = c("observed", "oe", "cofrag"),
+  type = c("observed", "oe", "expected", "cofrag"),
   norm = c("NONE", "KR", "VC", "VC_SQRT"),
   score_col = NULL,
   scale_score = TRUE,
