@@ -30,3 +30,36 @@
 
 #' @rdname gencode.v30.b37.gene_density.50kbp
 "gencode.v30.b37.gene_density.250kbp"
+
+
+#' GC content
+#' 
+#' Fixed-interval GC content for a number of reference genomes, with different bin sizes.
+"gc.GRCh37.100kbp"
+
+#' @rdname gc.GRCh37.100kbp
+"gc.GRCh37.250kbp"
+
+#' @rdname gc.GRCh37.100kbp
+"gc.GRCh37.500kbp"
+
+#' @rdname gc.GRCh37.100kbp
+"gc.GRCh37.1000kbp"
+
+#' @rdname gc.GRCh37.100kbp
+"gc.GRCh37.2500kbp"
+
+#' @rdname gc.GRCh37.100kbp
+"gc.GRCh38.100kbp"
+
+#' @rdname gc.GRCh37.100kbp
+"gc.GRCh38.250kbp"
+
+#' @rdname gc.GRCh37.100kbp
+"gc.GRCh38.500kbp"
+
+#' @rdname gc.GRCh37.100kbp
+"gc.GRCh38.1000kbp"
+
+#' @rdname gc.GRCh37.100kbp
+"gc.GRCh38.2500kbp"
