@@ -1,34 +1,91 @@
 #' Plot the A/B compartment profile
 #'
+#' @param score_col name of the column for compartment scores
+#' @param full_scale whether to plot the track for the full extent of the chromosome
 #' @export
 #' @return A ggplot2 object showing the compartments
 plot_compartment <-
   function(comps,
            chrom = NULL,
+           score_col = "score",
            full_scale = FALSE) {
     assert_that(is(comps, "GRanges") || is(comps, "data.frame"))
-    if (is(comps, "GRanges"))
-      comps %<>% bedtorch::as.bedtorch_table()
-
+    if (!is(comps, "GRanges"))
+      comps %<>% bedtorch::as.GenomicRanges()
+    
+    assert_that(score_col %in% colnames(mcols(comps)))
+    comps$score <- mcols(comps)[[score_col]]
+    comps <- comps[!is.na(comps$score)]
+    
     if (is.null(chrom)) {
-      chrom <- unique(comps$chrom %>% as.character())
+      chrom <- as.character(unique(seqnames(comps)))
     }
+    
+    resol <- as.integer(unique(GenomicRanges::width(comps)))
+    assert_that(is_scalar_integer(resol))
     
     # Only deal with single-chromosome track
     assert_that(is_scalar_character(chrom))
     
-    pick_idx <- comps$chrom == chrom
-    comps <- comps[pick_idx]
+    comps <- comps[seqnames(comps) == chrom]
     
-    resol <- comps$start %>% diff() %>% min()
-    p <- comps[!is.na(score)] %>%
-      mutate(compartment = factor(ifelse(score > 0, "open", "close"), levels = c("open", "close"))) %>%
-      ggplot(aes(x = start, y = score, fill = compartment)) +
-      geom_col(width = resol * .75) +
-      xlab("coordinate")
-
+    # if (type == "bar") {
+    #   p <- comps %>%
+    #     bedtorch::as.bedtorch_table() %>%
+    #     mutate(compartment = factor(ifelse(score > 0, "open", "close"), levels = c("open", "close"))) %>%
+    #     ggplot(aes(x = start, y = score, fill = compartment)) +
+    #     geom_col(width = resol * .75) +
+    #     xlab("coordinate") +
+    #     theme(legend.position = "top")
+    #
+    #   if (full_scale) {
+    #     p <- p + scale_x_continuous(labels = scales::comma, limits = c(0, max(comps$start)))
+    #   } else {
+    #     p <- p + scale_x_continuous(labels = scales::comma)
+    #   }
+    #   return(p)
+    # }
+    # Fill the gap with 0s, this helps in interpolating scores
+    comps_gapless <- GenomicRanges::GRanges(seqnames = chrom,
+                                            ranges = IRanges::IRanges(
+                                              start = min(GenomicRanges::start(comps)),
+                                              end = max(GenomicRanges::end(comps))
+                                            ))
+    comps_gapless <-
+      unlist(GenomicRanges::tile(comps_gapless, width = resol))
+    comps_gapless$score <- 0
+    hits <- GenomicRanges::findOverlaps(comps_gapless, comps)
+    comps_gapless[S4Vectors::queryHits(hits)]$score <-
+      comps[S4Vectors::subjectHits(hits)]$score
+    
+    # Interpolate data
+    lin_interp <- function(x, y, length.out = 1000) {
+      approx(x, y, xout = seq(min(x), max(x), length.out = length.out))$y
+    }
+    pos <- GenomicRanges::start(comps_gapless) + 0.5 * resol
+    pos_interp <- lin_interp(pos, pos)
+    score_interp <- lin_interp(pos, comps_gapless$score)
+    df_interp <-
+      data.table::data.table(pos = pos_interp, score = score_interp)
+    
+    # Make a grouping variable for each pos/neg segment
+    cat_rle = rle(df_interp$score < 0)
+    df_interp$group = rep.int(1:length(cat_rle$lengths), times = cat_rle$lengths)
+    df_interp[, compartment := factor(ifelse(score > 0, "A", "B"))]
+    df_interp <- df_interp[score != 0]
+    
+    p <- df_interp %>%
+      ggplot(aes(
+        x = pos,
+        y = score,
+        fill = compartment,
+        group = group
+      )) + geom_area() +
+      xlab("coordinate") +
+      theme(legend.position = "none")
+    
     if (full_scale) {
-      p + scale_x_continuous(labels = scales::comma, limits = c(0, max(comps$start)))
+      p + scale_x_continuous(labels = scales::comma, limits = c(0, max(df_interp$pos)))
     } else {
       p + scale_x_continuous(labels = scales::comma)
     }

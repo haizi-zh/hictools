@@ -4,7 +4,12 @@
 \alias{plot_compartment}
 \title{Plot the A/B compartment profile}
 \usage{
-plot_compartment(comps, chrom = NULL, full_scale = FALSE)
+plot_compartment(comps, chrom = NULL, score_col = "score", full_scale = FALSE)
+}
+\arguments{
+\item{score_col}{name of the column for compartment scores}
+
+\item{full_scale}{whether to plot the track for the full extent of the chromosome}
 }
 \value{
 A ggplot2 object showing the compartments
