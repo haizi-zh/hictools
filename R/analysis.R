@@ -326,6 +326,10 @@ get_compartment.ht_table <- function(hic_matrix,
                                      juicertools = get_juicer_tools(),
                                      java = "java",
                                      ...) {
+  assert_that(
+    hic_type(hic_matrix) %in% c("observed", "cofrag"),
+    msg = paste0("Incorrect HiC data type: ", hic_type(hic_matrix))
+  )
   method <- match.arg(method)
   oe <- match.arg(oe)
     
@@ -335,12 +339,12 @@ get_compartment.ht_table <- function(hic_matrix,
     chrom <- as.character(chrom)
   assert_that(is_character(chrom) && length(chrom) >= 1)
   
-  resol <- attr(hic_matrix, "resol")
+  resol <- hic_resol(hic_matrix)
   assert_that(is_valid_resol(resol) && resol >= 100e3L)
   
-  genome <- attr(hic_matrix, "genome")
+  genome <- hic_genome(hic_matrix)
   
-  if (method == "juicer" || oe == "juicer") {
+  if (method %in% c("juicer", "fanc") || oe == "juicer") {
     # Need to convert the input to .hic files if we need to calculate Juicer
     # eigenvectors, or use Juicer tools to get oe scores.
     
@@ -369,10 +373,20 @@ get_compartment.ht_table <- function(hic_matrix,
         method = method,
         chrom = chrom,
         standard = standard,
-        resol = attr(hic_matrix, "resol") %||% guess_resol(hic_matrix),
-        genome = attr(hic_matrix, "genome") %||% args$genome,
+        resol = resol,
+        genome = genome,
         juicertools = juicertools,
         java = java,
+        norm = "NONE"
+      )
+    else if (method == "fanc")
+      comps <- get_compartment.character(
+        hic_matrix = hic_file,
+        method = method,
+        chrom = chrom,
+        standard = standard,
+        resol = resol,
+        genome = genome,
         norm = "NONE"
       )
     else {
@@ -435,8 +449,6 @@ get_compartment.character <- function(hic_matrix,
                                       standard = NULL,
                                       oe = c("juicer", "ht", "as-is"),
                                       genome = NULL,
-                                      juicertools = get_juicer_tools(),
-                                      java = "java",
                                       norm = c("NONE", "VC", "VC_SQRT", "KR", "SCALE"),
                                       ...) {
   assert_that(grepl("\\.hic$", x = hic_matrix) && assertthat::is.readable(hic_matrix))
@@ -444,7 +456,10 @@ get_compartment.character <- function(hic_matrix,
   oe <- match.arg(oe)
   norm <- match.arg(norm)
   
-  assert_that(is_character(chrom) && length(chrom) >= 1)
+  # Must provide chromosome names unless work with FAN-C
+  if (method != "fanc")
+    assert_that(is_character(chrom) && length(chrom) >= 1)
+  
   assert_that(is_valid_resol(resol) && resol >= 100e3L)
   assert_that(!is_null(bedtorch::get_seqinfo(genome = genome)))
   
@@ -452,22 +467,34 @@ get_compartment.character <- function(hic_matrix,
     # No need to load the .hic file. Instead, directly call compartments using Juicer tools
     comps <- compartment_juicer_file(
       hic_file = hic_matrix,
-      juicertools = juicertools,
-      java = java,
       norm = norm,
       chrom = chrom,
       resol = resol,
-      genome = genome
+      genome = genome,
+      ...
     )
   } else if (method == "fanc") {
-    stop("FAN-C compartment is not supported at this point")
-    # # No need to load the .hic file. Instead, directly call compartments using Juicer tools
-    # comps <- compartment_fanc(
-    #   hic_file = hic_matrix,
-    #   norm = norm,
-    #   resol = resol,
-    #   genome = genome
-    # )
+    # Check fanc availability
+    fanc_version <-
+      tryCatch({
+        system2(
+          command = "fanc",
+          args = "--version",
+          stdout = TRUE,
+          stderr = FALSE
+        )
+      }, error = function(e)
+        NULL)
+    assert_that(!is.null(fanc_version), msg = "FAN-C is not available")
+    # stop("FAN-C compartment is not supported at this point")
+    # No need to load the .hic file. Instead, directly call compartments using FAN-C
+    comps <- compartment_fanc(
+      hic_file = hic_matrix,
+      norm = norm,
+      resol = resol,
+      genome = genome,
+      ...
+    )
   } else {
     if (oe == "juicer") {
       juicer_type <- "oe"
@@ -494,8 +521,6 @@ get_compartment.character <- function(hic_matrix,
         chrom = chrom,
         standard = standard,
         oe = oe,
-        juicertools = juicertools,
-        java = java,
         ...
       )
     
@@ -688,19 +713,31 @@ compartment_ht <-
 
 
 #' Get compartment using FANC, from an existing .hic file
+#' 
+#' @param ev an integer vector specifying which eigenvectors to calculate
+#' @param ab_file path to a pre-calculated AB matrix file
 compartment_fanc <- function(hic_file,
                              norm = c("NONE", "VC", "VC_SQRT", "KR", "SCALE"),
                              resol,
                              ev = 1:2,
-                             genome = c("hs37-1kg", "GRCh37", "GRCh38")) {
+                             genome = NULL,
+                             ab_file = NULL) {
   assert_that(is_scalar_character(hic_file) && endsWith(hic_file, ".hic"))
   norm <- match.arg(norm)
-  resol <- as.integer(resol)
-  assert_that(is_valid_resol(resol) && resol >= 100e3L)
-  assert_that(is_null(genome) || is_scalar_character(genome))
   
-  ab_file <- tempfile(fileext = ".ab")
-  on.exit(unlink(ab_file), add = TRUE)
+  resol <- as.integer(resol)
+  assert_that(is_scalar_integer(resol) &&
+                resol %in% strawr::readHicBpResolutions(hic_file),
+              msg = str_interp("Resolution ${resol} does not exist in ${hic_file}"))
+  assert_that(is_valid_resol(resol) && resol >= 100e3L)
+
+  # Test genome validity
+  assert_that(is_null(genome) || !is_null(bedtorch::get_seqinfo(genome)))
+  
+  if (is_null(ab_file)) {
+    ab_file <- tempfile(fileext = ".ab")
+    on.exit(unlink(ab_file), add = TRUE)
+  }  
   
   ev_tracks <- ev %>% map(function(ev) {
     ev_file <- tempfile(fileext = ".bed")
@@ -715,14 +752,16 @@ compartment_fanc <- function(hic_file,
     
     
     gr <- bedtorch::read_bed(ev_file)
-    # fanc output is 1-based bed
-    GenomicRanges::start(gr) <- GenomicRanges::start(gr) - 1
+    # ev_file may contains seqnames not available in genome
+    # trim them
     genome_info <- bedtorch::get_seqinfo(genome)
     seqlevels(gr, pruning.mode = "coarse") <- seqlevels(genome_info)
     seqinfo(gr) <- genome_info
-    # GenomeInfoDb::keepSeqlevels(gr, value = bedtorch::get_seqinfo("GRCh38") %>% seqnames(), pruning.mode = "coarse")
+
+    # fanc output is 1-based bed
+    GenomicRanges::start(gr) <- GenomicRanges::start(gr) - 1
     mcols(gr) <- data.frame(score = gr$V5)
-    gr[gr$score != 0 & gr$score != 1]
+    gr[!is.na(gr$score) & gr$score != 0 & gr$score != 1]
   })
   
   # Combine eigenvectors
@@ -742,29 +781,6 @@ compartment_fanc <- function(hic_file,
     
     return(x)
   })
-  
-  gc_track <- suppressWarnings({
-    local({
-      data_env <- env()
-      data_name <- str_interp("gc.${genome}.${resol%/%1000}kbp")
-      data(list = data_name, package = "hictools", envir = data_env)
-      data_env[[data_name]]
-    })
-  })
-  gc_track$score <- gc_track$gc
-  gc_track$gc <- NULL
-  
-  if (!is_null(gc_track)) {
-    comps <- orient_compartment(comps, standard = gc_track, score_cols = colnames(mcols(comps)))
-
-    score <- comps$score
-    comps$score <- NULL
-    mcols(comps) <- cbind(data.frame(score = score), mcols(comps))
-  } else {
-    score <- mcols(comps)[, 1]
-    comps$score <- NULL
-    mcols(comps) <- cbind(data.frame(score = score), mcols(comps))
-  }
   
   return(comps)
 }

@@ -12,8 +12,6 @@
   standard = NULL,
   oe = c("juicer", "ht", "as-is"),
   genome = NULL,
-  juicertools = get_juicer_tools(),
-  java = "java",
   norm = c("NONE", "VC", "VC_SQRT", "KR", "SCALE"),
   ...
 )

@@ -9,8 +9,14 @@ compartment_fanc(
   norm = c("NONE", "VC", "VC_SQRT", "KR", "SCALE"),
   resol,
   ev = 1:2,
-  genome = c("hs37-1kg", "GRCh37", "GRCh38")
+  genome = NULL,
+  ab_file = NULL
 )
+}
+\arguments{
+\item{ev}{an integer vector specifying which eigenvectors to calculate}
+
+\item{ab_file}{path to a pre-calculated AB matrix file}
 }
 \description{
 Get compartment using FANC, from an existing .hic file
