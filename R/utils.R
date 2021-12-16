@@ -69,3 +69,78 @@ concat_hic <- function(hic_list) {
     genome = genome
   )
 }
+
+#' Set HiC normalization method
+#' 
+#' @param hic a `ht_table` object
+`hic_norm<-` <- function(hic, value = c("NONE", "KR", "VC", "VC_SQRT")) {
+  assert_that(is(hic, "ht_table"))
+  value <- match.arg(value)
+  
+  attr(hic, "norm") <- value
+  return(hic)
+}
+
+#' Get HiC normalization method
+#' 
+#' @param hic a `ht_table` object
+hic_norm <- function(hic) {
+  assert_that(is(hic, "ht_table"))
+  return(attr(hic, "norm"))
+}
+
+#' Get HiC data type
+#' 
+#' @param hic a `ht_table` object
+hic_type <- function(hic) {
+  assert_that(is(hic, "ht_table"))
+  return(attr(hic, "type"))
+}
+
+#' Set HiC data type
+#' 
+#' @param hic a `ht_table` object
+`hic_type<-` <- function(hic, value = c("observed", "oe", "expected", "cofrag")) {
+  assert_that(is(hic, "ht_table"))
+  value <- match.arg(value)
+  
+  attr(hic, "type") <- value
+  return(hic)
+}
+
+
+#' Get HiC genome
+#' 
+#' @param hic a `ht_table` object
+hic_genome <- function(hic) {
+  assert_that(is(hic, "ht_table"))
+  return(attr(hic, "genome"))
+}
+
+
+#' Set HiC genome
+#' 
+#' @param hic a `ht_table` object
+`hic_genome<-` <- function(hic, value) {
+  assert_that(is(hic, "ht_table"))
+  # Make sure the genome name is valid
+  genome <- bedtorch::get_seqinfo(value)
+  assert_that(!is.null(genome))
+  
+  assert_that(
+    unique(c(hic$chrom1, hic$chrom2)) %in% GenomicRanges::seqnames(genome),
+    msg = str_interp("HiC records are not compatible with genome ${value}")
+  )
+  
+  attr(hic, "genome") <- value
+  return(hic)
+}
+
+
+#' Get HiC resolution
+#' 
+#' @param hic a `ht_table` object
+hic_resol <- function(hic) {
+  assert_that(is(hic, "ht_table"))
+  return(as.integer(attr(hic, "resol")))
+}

@@ -6,7 +6,7 @@
 \usage{
 load_hic(
   file_path,
-  format = c("juicer_short", "juicer_dump", "juicer_hic", "genbed", "cool"),
+  format = c("auto", "juicer_short", "juicer_dump", "juicer_hic", "genbed", "cool"),
   resol = NULL,
   ...
 )
