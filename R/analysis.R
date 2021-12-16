@@ -848,20 +848,21 @@ pearson_ht <- function(hic_matrix, chrom, method = "lieberman") {
 }
 
 
-#' Orient the compartment score signs according to `standard`
+#' Orient the compartment score signs according to `reference`
 #'
 #' @param compartment A `GRanges` object for compartment scores.
-#' @param standard A `GRanges` for the standard compartment track.
+#' @param reference A `GRanges` for the reference compartment track.
 #' @param score_cols A character vector indicating which columns are candidates
 #'   for compartment scores. For example, `c("PC1", "PC2")` means from `PC1` and
 #'   `PC2`, picking the one most likely to be associated with A/B compartments,
 #'   and orient it if necessary.
 #' @return The compartment. The signs of compartment scores may have been
-#'   flipped based on `standard`.
+#'   flipped based on `reference`.
 #' @export
-orient_compartment <- function(compartment, standard, score_cols = c("score")) {
+orient_compartment <- function(compartment, reference, score_cols = c("score")) {
   assert_that(is_character(score_cols) && length(score_cols) >= 1)
   assert_that(is(compartment, "GRanges"))
+  standard <- reference
   assert_that(is(standard, "GRanges"))
   
   # Check for compatibility
@@ -887,49 +888,22 @@ orient_compartment <- function(compartment, standard, score_cols = c("score")) {
     map(function(chrom) {
       compartment <- compartment[seqnames(compartment) == chrom]
       
-      # Calcualte the correlation with PC1, PC2, etc...
-      cor_values <- map_dbl(score_cols, function(score_col) {
-        compartment$score <- mcols(compartment)[[score_col]]
-        hits <- findOverlaps(compartment, standard)
-        intervals_1 <- compartment[queryHits(hits)]
-        intervals_2 <- standard[subjectHits(hits)]
-        cor(intervals_1$score, intervals_2$score, use = "complete.obs")
-      })
-      names(cor_values) <- score_cols
-      
-      # Only pick higher-order PCs when the correlation is sufficiently high (> 0.5) and
-      # sufficiently larger than PC1 correlation (delta > 0.1)
-      min_higher_pc_cor <- 0.5
-      min_delta_pc_cor <- 0.1
-      
-      sorted_cor <- sort(abs(cor_values), decreasing = TRUE)
-      
-      if (names(sorted_cor[1]) != score_cols[1] &&
-          sorted_cor[1] > min_higher_pc_cor &&
-          sorted_cor[1] - sorted_cor[score_cols[1]] > min_delta_pc_cor) {
-        # Pick the one with the highest correlation coefficient, regardless of the sign
-        # PC2 should be sufficiently larger than PC1 to be picked as compartment scores
-        
-        pick_cor_name <- names(sorted_cor[1])
-        flip_ev <- cor_values[pick_cor_name] < 0
-        logging::logwarn(
-          str_interp(
-            "Compartment for chromosome ${chrom}: higher PC ${pick_cor_name} is chosen. Correlation: ${cor_values[pick_cor_name]}"
-          )
-        )
-      } else {
-        pick_cor_name <- score_cols[1]
-        flip_ev <- cor_values[pick_cor_name] < 0
+      hits <- findOverlaps(compartment, standard)
+      if (length(hits) == 0) {
+        warning(paste0("Chromosome ", chrom, " does not exist in the reference track"),
+                call. = FALSE)
+        return(compartment)
       }
       
-      mcols_comps <- mcols(compartment)
-      score <- mcols_comps[[pick_cor_name]]
-      if (flip_ev)
-        score <- -score
-      
-      mcols_comps$score <- NULL
-      mcols_comps <- cbind(list(score = score), mcols_comps)
-      mcols(compartment) <- mcols_comps
+      # Calcualte the correlation with PC1, PC2, etc...
+      for (score_name in score_cols) {
+        original_score <- mcols(compartment)[[score_name]]
+        cor_value <- cor(original_score[queryHits(hits)],
+                         standard[subjectHits(hits)]$score, 
+                         use = "complete.obs")
+        mcols(compartment)[[score_name]] <-
+          sign(cor_value) * mcols(compartment)[[score_name]]
+      }
       
       return(compartment)
     })
