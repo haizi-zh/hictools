@@ -20,14 +20,15 @@ plot_compartment <-
     if (is.null(chrom)) {
       chrom <- as.character(unique(seqnames(comps)))
     }
-    
-    resol <- as.integer(unique(GenomicRanges::width(comps)))
-    assert_that(is_scalar_integer(resol))
-    
     # Only deal with single-chromosome track
     assert_that(is_scalar_character(chrom))
+    comps <- sort(comps[seqnames(comps) == chrom])
     
-    comps <- comps[seqnames(comps) == chrom]
+    # If the last and the first bin have different sizes, it means the last bin has been trimmed
+    resol <- as.integer(unique(GenomicRanges::width(comps)))
+    if (length(resol) == 2)
+      resol <- resol[1]
+    assert_that(is_scalar_integer(resol))
     
     # if (type == "bar") {
     #   p <- comps %>%
@@ -46,13 +47,12 @@ plot_compartment <-
     #   return(p)
     # }
     # Fill the gap with 0s, this helps in interpolating scores
-    comps_gapless <- GenomicRanges::GRanges(seqnames = chrom,
-                                            ranges = IRanges::IRanges(
-                                              start = min(GenomicRanges::start(comps)),
-                                              end = max(GenomicRanges::end(comps))
-                                            ))
     comps_gapless <-
-      unlist(GenomicRanges::tile(comps_gapless, width = resol))
+      GenomicRanges::tileGenome(
+        seqlengths = GenomeInfoDb::keepSeqlevels(seqinfo(comps), chrom),
+        tilewidth = resol,
+        cut.last.tile.in.chrom = TRUE
+      )
     comps_gapless$score <- 0
     hits <- GenomicRanges::findOverlaps(comps_gapless, comps)
     comps_gapless[S4Vectors::queryHits(hits)]$score <-
@@ -69,8 +69,8 @@ plot_compartment <-
       data.table::data.table(pos = pos_interp, score = score_interp)
     
     # Make a grouping variable for each pos/neg segment
-    cat_rle = rle(df_interp$score < 0)
-    df_interp$group = rep.int(1:length(cat_rle$lengths), times = cat_rle$lengths)
+    cat_rle <- rle(sign(df_interp$score))
+    df_interp$group <- rep.int(1:length(cat_rle$lengths), times = cat_rle$lengths)
     df_interp[, compartment := factor(ifelse(score > 0, "A", "B"))]
     df_interp <- df_interp[score != 0]
     
