@@ -769,14 +769,14 @@ compartment_fanc <- function(hic_file,
     y <- ev_tracks[[idx]]
     
     if (is_null(x)) {
-      mcols(y) <- data.frame(ev_1 = y$score)
+      mcols(y) <- data.frame(PC1 = y$score)
       return(y)
     }
     
     hits <- findOverlaps(x, y, type = "equal")
     x <- x[queryHits(hits)]
     mcols_x <- mcols(x)
-    mcols_x[[paste0("ev_", idx)]] <- y[subjectHits(hits)]$score
+    mcols_x[[paste0("PC", idx)]] <- y[subjectHits(hits)]$score
     mcols(x) <- mcols_x
     
     return(x)
