@@ -45,8 +45,16 @@ load_juicer_hic <- function(file_path,
                             norm = c("NONE", "KR", "VC", "VC_SQRT"),
                             genome = NULL) {
   assert_that(is_scalar_character(file_path) && assertthat::is.readable(file_path))
-  assert_that(is_character(chrom))
-  assert_that(is_valid_resol(resol))
+  assert_that(
+    is_character(chrom) &&
+      chrom %in% strawr::readHicChroms(file_path)$name,
+    msg = str_interp("Chromosome ${chrom} does not exist in ${file_path}")
+  )
+  
+  resol <- as.integer(resol)
+  assert_that(is_scalar_integer(resol) &&
+                resol %in% strawr::readHicBpResolutions(file_path),
+              msg = str_interp("Resolution ${resol} does not exist in ${file_path}"))
   
   type <- match.arg(type)
   norm <- match.arg(norm)
