@@ -715,12 +715,14 @@ compartment_ht <-
 #' Get compartment using FANC, from an existing .hic file
 #' 
 #' @param ev an integer vector specifying which eigenvectors to calculate
+#' @param keep_ab if `TRUE`, keep the AB matrix file
 #' @param ab_file path to a pre-calculated AB matrix file
 compartment_fanc <- function(hic_file,
                              norm = c("NONE", "VC", "VC_SQRT", "KR", "SCALE"),
                              resol,
                              ev = 1:2,
                              genome = NULL,
+                             keep_ab = FALSE,
                              ab_file = NULL) {
   assert_that(is_scalar_character(hic_file) && endsWith(hic_file, ".hic"))
   norm <- match.arg(norm)
@@ -734,10 +736,13 @@ compartment_fanc <- function(hic_file,
   # Test genome validity
   assert_that(is_null(genome) || !is_null(bedtorch::get_seqinfo(genome)))
   
-  if (is_null(ab_file)) {
+  assert_that(is_scalar_logical(keep_ab))
+  if (keep_ab) {
+    assert_that(is_scalar_character(ab_file), !file.exists(ab_file))
+  } else if (is_null(ab_file)) {
     ab_file <- tempfile(fileext = ".ab")
     on.exit(unlink(ab_file), add = TRUE)
-  }  
+  }
   
   ev_tracks <- ev %>% map(function(ev) {
     ev_file <- tempfile(fileext = ".bed")

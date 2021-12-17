@@ -2,14 +2,14 @@
 % Please edit documentation in R/analysis.R
 \name{orient_compartment}
 \alias{orient_compartment}
-\title{Orient the compartment score signs according to \code{standard}}
+\title{Orient the compartment score signs according to \code{reference}}
 \usage{
-orient_compartment(compartment, standard, score_cols = c("score"))
+orient_compartment(compartment, reference, score_cols = c("score"))
 }
 \arguments{
 \item{compartment}{A \code{GRanges} object for compartment scores.}
 
-\item{standard}{A \code{GRanges} for the standard compartment track.}
+\item{reference}{A \code{GRanges} for the reference compartment track.}
 
 \item{score_cols}{A character vector indicating which columns are candidates
 for compartment scores. For example, \code{c("PC1", "PC2")} means from \code{PC1} and
@@ -18,8 +18,8 @@ and orient it if necessary.}
 }
 \value{
 The compartment. The signs of compartment scores may have been
-flipped based on \code{standard}.
+flipped based on \code{reference}.
 }
 \description{
-Orient the compartment score signs according to \code{standard}
+Orient the compartment score signs according to \code{reference}
 }

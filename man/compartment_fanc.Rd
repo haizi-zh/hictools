@@ -10,11 +10,14 @@ compartment_fanc(
   resol,
   ev = 1:2,
   genome = NULL,
+  keep_ab = FALSE,
   ab_file = NULL
 )
 }
 \arguments{
 \item{ev}{an integer vector specifying which eigenvectors to calculate}
+
+\item{keep_ab}{if \code{TRUE}, keep the AB matrix file}
 
 \item{ab_file}{path to a pre-calculated AB matrix file}
 }
