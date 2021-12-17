@@ -11,8 +11,12 @@ compartment_juicer_file(
   norm = c("NONE", "VC", "VC_SQRT", "KR", "SCALE"),
   chrom = NULL,
   resol = NULL,
-  genome = NULL
+  genome = NULL,
+  bpparam = BiocParallel::bpparam("SerialParam")
 )
+}
+\arguments{
+\item{bpparam}{BiocParallelParam for parallel operation}
 }
 \description{
 Compute compartment scores using Juicer tools, from an existing .hic file

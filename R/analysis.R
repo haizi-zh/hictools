@@ -559,13 +559,16 @@ get_compartment.character <- function(hic_matrix,
 
 
 #' Compute compartment scores using Juicer tools, from an existing .hic file
+#' 
+#' @param bpparam BiocParallelParam for parallel operation
 compartment_juicer_file <- function(hic_file,
                                     juicertools = get_juicer_tools(),
                                     java = "java",
                                     norm = c("NONE", "VC", "VC_SQRT", "KR", "SCALE"),
                                     chrom = NULL,
                                     resol = NULL,
-                                    genome = NULL) {
+                                    genome = NULL,
+                                    bpparam = BiocParallel::bpparam("SerialParam")) {
   assert_that(grepl(pattern = "\\.hic$", x = hic_file) && assertthat::is.readable(hic_file))
   assert_that(is_scalar_character(java))
   assert_that(is_scalar_character(juicertools))
@@ -576,7 +579,7 @@ compartment_juicer_file <- function(hic_file,
   assert_that(is_valid_resol(resol) && resol >= 100e3L)
   assert_that(is_null(genome) || (is_scalar_character(genome) && !is_null(bedtorch::get_seqinfo(genome))))
   
-  comps <- chrom %>% map(function(chrom) {
+  comps <- BiocParallel::bplapply(chrom, BPPARAM = bpparam, FUN = function(chrom) {
     ev_file <- tempfile()
     on.exit(unlink(ev_file), add = TRUE)
     cmd <-
@@ -598,6 +601,7 @@ compartment_juicer_file <- function(hic_file,
   }) %>%
     data.table::rbindlist()
   
+  # Need to trim to fit the genome
   comps <- suppressWarnings(bedtorch::as.GenomicRanges(comps[!is.na(score)], genome = genome) %>% GenomicRanges::trim())
   
   return(comps)

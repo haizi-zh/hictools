@@ -1,6 +1,6 @@
 Package: hictools
 Title: Home-made handy tools for Hi-C
-Version: 0.1.6.9
+Version: 0.1.6.10
 Authors@R: 
     person(given = "Haizi",
            family = "Zheng",
@@ -28,10 +28,12 @@ Depends:
 Suggests: 
     testthat (>= 3.0.0),
     logging,
-    here
+    here,
+    BiocParallel (>= 1.28.3)
 Config/testthat/edition: 3
 Remotes: 
     aidenlab/straw/R,
     haizi-zh/bedtorch,
     bioc::rhdf5,
-    bioc::GenomicRanges
+    bioc::GenomicRanges,
+    bioc::BiocParallel
