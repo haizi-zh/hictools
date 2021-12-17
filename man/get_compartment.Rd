@@ -8,10 +8,8 @@ get_compartment(
   hic_matrix,
   method = c("juicer", "lieberman", "obs_exp", "nonzero", "average", "fanc"),
   chrom = NULL,
-  standard = NULL,
+  reference = NULL,
   oe = c("juicer", "ht", "as-is"),
-  juicertools = get_juicer_tools(),
-  java = "java",
   norm = c("NONE", "VC", "VC_SQRT", "KR", "SCALE"),
   ...
 )
@@ -25,7 +23,7 @@ directly from the \code{.hic} file.}
 \code{NULL}, will calculate compartment scores for all chromosomes. However, in
 this case, \code{hic_matrx} cannot be the \code{.hic} file name.}
 
-\item{standard}{A standard compartment track which is used to "orient"
+\item{reference}{A reference compartment track which is used to "orient"
 principal components. If \code{NULL}, no orienting will be performed. Can be the
 name of a pre-computed reference track, e.g. gc.GRCh38.500kbp (see
 \code{data(package = "hictools")}), or path to the bed file for the reference

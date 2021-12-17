@@ -8,7 +8,7 @@
   hic_matrix,
   method = c("juicer", "lieberman", "obs_exp", "nonzero", "average", "fanc"),
   chrom = NULL,
-  standard = NULL,
+  reference = NULL,
   oe = c("juicer", "ht", "as-is"),
   juicertools = get_juicer_tools(),
   java = "java",

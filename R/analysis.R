@@ -284,7 +284,7 @@ oe_ht <- function(hic_matrix,
 #'   this case, `hic_matrx` cannot be the `.hic` file name.
 #' @param resol Resolution of the matrix. Must be a positive integer when the
 #'   input is a Hi-C file.
-#' @param standard A standard compartment track which is used to "orient"
+#' @param reference A reference compartment track which is used to "orient"
 #'   principal components. If `NULL`, no orienting will be performed. Can be the
 #'   name of a pre-computed reference track, e.g. gc.GRCh38.500kbp (see
 #'   `data(package = "hictools")`), or path to the bed file for the reference
@@ -301,10 +301,8 @@ oe_ht <- function(hic_matrix,
 get_compartment <- function(hic_matrix,
                             method = c("juicer", "lieberman", "obs_exp", "nonzero", "average", "fanc"),
                             chrom = NULL,
-                            standard = NULL,
+                            reference = NULL,
                             oe = c("juicer", "ht", "as-is"),
-                            juicertools = get_juicer_tools(),
-                            java = "java",
                             norm = c("NONE", "VC", "VC_SQRT", "KR", "SCALE"),
                             ...) {
   UseMethod("get_compartment")
@@ -321,7 +319,7 @@ get_compartment <- function(hic_matrix,
 get_compartment.ht_table <- function(hic_matrix,
                                      method = c("juicer", "lieberman", "obs_exp", "nonzero", "average", "fanc"),
                                      chrom = NULL,
-                                     standard = NULL,
+                                     reference = NULL,
                                      oe = c("juicer", "ht", "as-is"),
                                      juicertools = get_juicer_tools(),
                                      java = "java",
@@ -372,7 +370,7 @@ get_compartment.ht_table <- function(hic_matrix,
         hic_matrix = hic_file,
         method = method,
         chrom = chrom,
-        standard = standard,
+        reference = reference,
         resol = resol,
         genome = genome,
         juicertools = juicertools,
@@ -384,7 +382,7 @@ get_compartment.ht_table <- function(hic_matrix,
         hic_matrix = hic_file,
         method = method,
         chrom = chrom,
-        standard = standard,
+        reference = reference,
         resol = resol,
         genome = genome,
         norm = "NONE"
@@ -405,7 +403,7 @@ get_compartment.ht_table <- function(hic_matrix,
         get_compartment.ht_table(
           method = method,
           chrom = chrom,
-          standard = standard,
+          reference = reference,
           oe = "as-is",
           juicertools = juicertools,
           java = java,
@@ -422,13 +420,13 @@ get_compartment.ht_table <- function(hic_matrix,
     )
   }
   
-  if (!is_null(standard)) {
+  if (!is_null(reference)) {
     # PC1/2/3, ..., or simply score
     score_cols <- colnames(mcols(comps)) %>% grep(pattern = "^PC[0-9]+", value = TRUE)
     if (length(score_cols) == 0)
       score_cols <- colnames(mcols(comps))[1]
     
-    comps <- orient_compartment(comps, standard, score_cols = score_cols)
+    comps <- orient_compartment(comps, reference, score_cols = score_cols)
   }
 
   return(comps)
@@ -446,7 +444,7 @@ get_compartment.character <- function(hic_matrix,
                                       method = c("juicer", "lieberman", "obs_exp", "nonzero", "average", "fanc"),
                                       chrom = NULL,
                                       resol,
-                                      standard = NULL,
+                                      reference = NULL,
                                       oe = c("juicer", "ht", "as-is"),
                                       genome = NULL,
                                       norm = c("NONE", "VC", "VC_SQRT", "KR", "SCALE"),
@@ -519,7 +517,7 @@ get_compartment.character <- function(hic_matrix,
       get_compartment.ht_table(
         method = method,
         chrom = chrom,
-        standard = standard,
+        reference = reference,
         oe = oe,
         ...
       )
@@ -541,19 +539,19 @@ get_compartment.character <- function(hic_matrix,
     #   hic_matrix = hic_matrix,
     #   method = method,
     #   chrom = chrom,
-    #   standard = standard,
+    #   reference = reference,
     #   oe = switch(oe, juicer = "as-is", oe)
     # )
   }
   
   
-  if (!is_null(standard)) {
+  if (!is_null(reference)) {
     # PC1/2/3, ..., or simply score
     score_cols <- colnames(mcols(comps)) %>% grep(pattern = "^PC[0-9]+", value = TRUE)
     if (length(score_cols) == 0)
       score_cols <- colnames(mcols(comps))[1]
     
-    comps <- orient_compartment(comps, standard, score_cols = score_cols)
+    comps <- orient_compartment(comps, reference, score_cols = score_cols)
   }
   
   return(comps)
@@ -692,7 +690,7 @@ compartment_ht <-
     # comps <- suppressWarnings(comps %>% bedtorch::as.GenomicRanges() %>% GenomicRanges::trim())
     # 
     # if (!is_null(gc_track)) {
-    #   comps <- orient_compartment(comps, standard = gc_track, score_cols = colnames(mcols(comps)))
+    #   comps <- orient_compartment(comps, reference = gc_track, score_cols = colnames(mcols(comps)))
     #   
     #   score <- comps$score
     #   comps$score <- NULL
@@ -704,9 +702,9 @@ compartment_ht <-
     # }
     # 
     # 
-    # if (!is_null(standard))
-    #   comps %<>% orient_compartment(standard = standard, score_cols = paste0("PC", seq.int(npc)))
-    # # comps %<>% orient_compartment(standard = standard)
+    # if (!is_null(reference))
+    #   comps %<>% orient_compartment(reference = reference, score_cols = paste0("PC", seq.int(npc)))
+    # # comps %<>% orient_compartment(reference = reference)
     
     # suppressWarnings(comps %>% bedtorch::as.GenomicRanges() %>% GenomicRanges::trim())
   }
@@ -867,8 +865,7 @@ pearson_ht <- function(hic_matrix, chrom, method = "lieberman") {
 orient_compartment <- function(compartment, reference, score_cols = c("score")) {
   assert_that(is_character(score_cols) && length(score_cols) >= 1)
   assert_that(is(compartment, "GRanges"))
-  standard <- reference
-  assert_that(is(standard, "GRanges"))
+  assert_that(is(reference, "GRanges"))
   
   # Check for compatibility
   resol1 <- local({
@@ -876,24 +873,24 @@ orient_compartment <- function(compartment, reference, score_cols = c("score")) 
     dt[, dplyr::lead(start) - start, by = "chrom"][, min(V1, na.rm = TRUE)]
   })
   resol2 <- local({
-    dt <- standard %>% bedtorch::as.bedtorch_table()
+    dt <- reference %>% bedtorch::as.bedtorch_table()
     dt[, dplyr::lead(start) - start, by = "chrom"][, min(V1, na.rm = TRUE)]
   })
   assert_that(is_valid_resol(resol1) && is_valid_resol(resol2) && resol1 == resol2)
   
   # Make compatible genomes
   original_seqinfo <- seqinfo(compartment)
-  seqlevels(compartment) <- seqlevels(standard)
-  seqinfo(compartment) <- seqinfo(standard)
+  seqlevels(compartment) <- seqlevels(reference)
+  seqinfo(compartment) <- seqinfo(reference)
   
-  # By default, the first column of standard is used for determining the orientation
-  standard$score <- mcols(standard)[[1]]
+  # By default, the first column of reference is used for determining the orientation
+  reference$score <- mcols(reference)[[1]]
   
   compartment <- unique(seqnames(compartment)) %>%
     map(function(chrom) {
       compartment <- compartment[seqnames(compartment) == chrom]
       
-      hits <- findOverlaps(compartment, standard)
+      hits <- findOverlaps(compartment, reference)
       if (length(hits) == 0) {
         warning(paste0("Chromosome ", chrom, " does not exist in the reference track"),
                 call. = FALSE)
@@ -904,7 +901,7 @@ orient_compartment <- function(compartment, reference, score_cols = c("score")) 
       for (score_name in score_cols) {
         original_score <- mcols(compartment)[[score_name]]
         cor_value <- cor(original_score[queryHits(hits)],
-                         standard[subjectHits(hits)]$score, 
+                         reference[subjectHits(hits)]$score, 
                          use = "complete.obs")
         mcols(compartment)[[score_name]] <-
           sign(cor_value) * mcols(compartment)[[score_name]]

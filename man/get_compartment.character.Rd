@@ -9,7 +9,7 @@
   method = c("juicer", "lieberman", "obs_exp", "nonzero", "average", "fanc"),
   chrom = NULL,
   resol,
-  standard = NULL,
+  reference = NULL,
   oe = c("juicer", "ht", "as-is"),
   genome = NULL,
   norm = c("NONE", "VC", "VC_SQRT", "KR", "SCALE"),
