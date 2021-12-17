@@ -997,35 +997,47 @@ hicexplorer_pca <- function(hic_matrix,
 #' @param y Compartment scores.
 #' @param method Type of correlation scores. Must be one of `"pearson"`,
 #'   `"spearman"`, and `"kendall"`.
+#' @param overall if FALSE, calculate correlation scores for each chromosome
+#'   separately
 #' @return A data frame for correlation.
 #' @export
 comp_correlation <-
   function(x,
            y,
-           method = c("pearson", "spearman", "kendall")) {
+           method = c("pearson", "spearman", "kendall"),
+           overall = FALSE) {
     assert_that(is(x, "GRanges"))
     assert_that(is(y, "GRanges"))
+    assert_that(is_scalar_logical(overall))
+    method <- match.arg(method, several.ok = TRUE)
     
     chroms <- intersect(seqnames(x), seqnames(y))
     seqlevels(x, pruning.mode = "coarse") <- chroms
     seqlevels(y, pruning.mode = "coarse") <- chroms
     seqinfo(y) <- seqinfo(x)
     
-    method <- match.arg(method, several.ok = TRUE)
     
-    expand_grid(
-      method = method,
-      chrom = chroms
-    ) %>%
-      pmap_dfr(function(method, chrom) {
-        x <- x[seqnames(x) == chrom]
-        y <- y[seqnames(x) == chrom]
-        
-        hits <- findOverlaps(x, y)
-        score_x <- mcols(x[queryHits(hits)])[[1]]
-        score_y <- mcols(y[subjectHits(hits)])[[1]]
-        cor_score <- cor(score_x, score_y, use = "complete.obs", method = method)
-        
-        tibble(chrom = chrom, method = method, cor = cor_score)
+    cor_helper <- function(x, y, method) {
+      hits <- findOverlaps(x, y)
+      score_x <- mcols(x[queryHits(hits)])[[1]]
+      score_y <- mcols(y[subjectHits(hits)])[[1]]
+      return(cor(score_x, score_y, use = "complete.obs", method = method))
+    }
+    
+    if (overall) {
+      map_dfr(method, function(method) {
+        tibble(method = method, cor = cor_helper(x, y, method))
       })
+    } else {
+      expand_grid(method = method,
+                  chrom = chroms) %>%
+        pmap_dfr(function(method, chrom) {
+          x <- x[seqnames(x) == chrom]
+          y <- y[seqnames(x) == chrom]
+          
+          tibble(chrom = chrom,
+                 method = method,
+                 cor = cor_helper(x, y, method))
+        })
+    }
   }

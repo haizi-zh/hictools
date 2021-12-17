@@ -4,7 +4,12 @@
 \alias{comp_correlation}
 \title{Calculate correlation coefficients between two compartment tracks}
 \usage{
-comp_correlation(x, y, method = c("pearson", "spearman", "kendall"))
+comp_correlation(
+  x,
+  y,
+  method = c("pearson", "spearman", "kendall"),
+  overall = FALSE
+)
 }
 \arguments{
 \item{x}{Compartment scores.}
@@ -13,6 +18,9 @@ comp_correlation(x, y, method = c("pearson", "spearman", "kendall"))
 
 \item{method}{Type of correlation scores. Must be one of \code{"pearson"},
 \code{"spearman"}, and \code{"kendall"}.}
+
+\item{overall}{if FALSE, calculate correlation scores for each chromosome
+separately}
 }
 \value{
 A data frame for correlation.
