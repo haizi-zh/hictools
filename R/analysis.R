@@ -123,7 +123,7 @@ oe_juicer <-
           file_path = temp_hic,
           chrom = chrom,
           resol = resol,
-          matrix = "oe",
+          type = "oe",
           norm = norm
         )
       unlink(temp_hic)
