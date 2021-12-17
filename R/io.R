@@ -44,7 +44,11 @@ load_juicer_hic <- function(file_path,
                             type = c("observed", "oe", "expected", "cofrag"),
                             norm = c("NONE", "KR", "VC", "VC_SQRT"),
                             genome = NULL) {
-  assert_that(is_scalar_character(file_path) && assertthat::is.readable(file_path))
+  # The underlying C function can't deal with paths like "~/some_path/some_file.hic"
+  # Need obtain the "canonical" path
+  file_path <- normalizePath(file_path)
+  assert_that(is_scalar_character(file_path), assertthat::is.readable(file_path))
+  
   assert_that(
     is_character(chrom) &&
       chrom %in% strawr::readHicChroms(file_path)$name,
