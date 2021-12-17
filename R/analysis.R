@@ -999,6 +999,8 @@ hicexplorer_pca <- function(hic_matrix,
 #'
 #' @param x Compartment scores.
 #' @param y Compartment scores.
+#' @param score_x name of the score column in `x`
+#' @param score_y name of the score column in `y`
 #' @param method Type of correlation scores. Must be one of `"pearson"`,
 #'   `"spearman"`, and `"kendall"`.
 #' @param overall if FALSE, calculate correlation scores for each chromosome
@@ -1008,6 +1010,8 @@ hicexplorer_pca <- function(hic_matrix,
 comp_correlation <-
   function(x,
            y,
+           score_x = 1,
+           score_y = 1,
            method = c("pearson", "spearman", "kendall"),
            overall = FALSE) {
     assert_that(is(x, "GRanges"))
@@ -1023,8 +1027,8 @@ comp_correlation <-
     
     cor_helper <- function(x, y, method) {
       hits <- findOverlaps(x, y)
-      score_x <- mcols(x[queryHits(hits)])[[1]]
-      score_y <- mcols(y[subjectHits(hits)])[[1]]
+      score_x <- mcols(x[queryHits(hits)])[[score_x]]
+      score_y <- mcols(y[subjectHits(hits)])[[score_y]]
       return(cor(score_x, score_y, use = "complete.obs", method = method))
     }
     

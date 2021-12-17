@@ -7,6 +7,8 @@
 comp_correlation(
   x,
   y,
+  score_x = 1,
+  score_y = 1,
   method = c("pearson", "spearman", "kendall"),
   overall = FALSE
 )
@@ -15,6 +17,10 @@ comp_correlation(
 \item{x}{Compartment scores.}
 
 \item{y}{Compartment scores.}
+
+\item{score_x}{name of the score column in \code{x}}
+
+\item{score_y}{name of the score column in \code{y}}
 
 \item{method}{Type of correlation scores. Must be one of \code{"pearson"},
 \code{"spearman"}, and \code{"kendall"}.}
