@@ -213,7 +213,10 @@ load_hic_genbed <- function(file_path,
                   is_scalar_character(genome) &&
                     !is_null(bedtorch::get_seqinfo(genome))
                 ))
-  assert_that(is_null(bootstrap) || is_integer(bootstrap))
+  if (!is_null(bootstrap)) {
+    assert_that(abs(bootstrap - round(bootstrap)) < .Machine$double.eps)
+    bootstrap <- as.integer(bootstrap)
+  }
 
   data <-
     bedtorch::read_bed(file_path, range = chrom, use_gr = FALSE, genome = genome) %>%
