@@ -190,23 +190,30 @@ load_juicer_dump <- function(file_path,
 #' 
 #' @param resol An integer for the resolution. If `NULL`, the resolution will be
 #'   guessed from the Hi-C data.
-#' @param score_col Specify which column represents cofrag scores. Default is NULL, 
-#' @param scale_score Scale scales to the interval [0, 1]
-#' which indicates the 7th column
+#' @param score_col Specify which column represents cofrag scores. Default is 7
+#'   (the 7th column).
+#' @param bootstrap If multiple bootstrap records exist, only return results for
+#'   specified bootstrap iterations. If NULL, results for all bootstrap
+#'   iterations will be retunred.
 #' @export
 load_hic_genbed <- function(file_path,
                             resol = NULL,
                             chrom = NULL,
                             type = c("observed", "oe", "expected", "cofrag"),
                             norm = c("NONE", "KR", "VC", "VC_SQRT"),
-                            score_col = NULL,
-                            scale_score = TRUE,
-                            genome = NULL) {
+                            score_col = 7L,
+                            genome = NULL,
+                            bootstrap = 1L) {
   assert_that(is_scalar_character(file_path))
   assert_that(is_null(chrom) || is_character(chrom))
   type <- match.arg(type)
   norm <- match.arg(norm)
-  assert_that(is_scalar_character(genome) || is_null(genome))
+  assert_that(is_null(genome) ||
+                (
+                  is_scalar_character(genome) &&
+                    !is_null(bedtorch::get_seqinfo(genome))
+                ))
+  assert_that(is_null(bootstrap) || is_integer(bootstrap))
 
   data <-
     bedtorch::read_bed(file_path, range = chrom, use_gr = FALSE, genome = genome) %>%
@@ -215,36 +222,34 @@ load_hic_genbed <- function(file_path,
   # If the column bootstrap exists, this indicates there are multiple scores for each bin pair 
   # due to multiple bootstrap iterations.
   # In this case, we only load scores from the first bootstrap
-  if ("bootstrap" %in% colnames(data))
-    data <- data[bootstrap == 1]
-
-  data.table::setnames(data,
-                       1:7,
-                       c(
-                         "chrom1",
-                         "pos1",
-                         "end1",
-                         "chrom2",
-                         "pos2",
-                         "end2",
-                         "score"
-                       ))
-  
-  if (!is_null(score_col)) {
-    data[, score := data[[score_col]]]
+  if ("bootstrap" %in% colnames(data) && !is_null(bootstrap)) {
+    data <- local({
+      select_flag <- data$bootstrap %in% bootstrap
+      data[select_flag]
+    })
   }
-  
-  if (scale_score)
-    data[, score := (score - min(score, na.rm = TRUE)) / (max(score, na.rm = TRUE) - min(score, na.rm = TRUE))]
+
+  # The score column should be the 7th column
+  data <- select(data, 1:6, all_of(score_col), dplyr::everything())
+  # Fix column names
+  col_head <- c("chrom1",
+                "pos1",
+                "end1",
+                "chrom2",
+                "pos2",
+                "end2",
+                "score")
+  col_new <- make.names(c(col_head, tail(colnames(data), n = -7)), unique = TRUE)
+  data.table::setnames(data, new = col_new)
   
   data <- data[, `:=`(chrom1 = as.character(chrom1), chrom2 = as.character(chrom2))]
   
-  if (is.null(resol))
+  if (is_null(resol))
     resol <- guess_resol(data)
-  
+
   assert_that(is_valid_resol(resol))
 
-  data[, .(chrom1, pos1, chrom2, pos2, score)] %>%
+  data %>% select(-c(end1, end2)) %>%
     ht_table(resol = resol, type = type, norm = norm, genome = genome)
 }
 

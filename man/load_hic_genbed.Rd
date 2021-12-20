@@ -10,19 +10,21 @@ load_hic_genbed(
   chrom = NULL,
   type = c("observed", "oe", "expected", "cofrag"),
   norm = c("NONE", "KR", "VC", "VC_SQRT"),
-  score_col = NULL,
-  scale_score = TRUE,
-  genome = NULL
+  score_col = 7L,
+  genome = NULL,
+  bootstrap = 1L
 )
 }
 \arguments{
 \item{resol}{An integer for the resolution. If \code{NULL}, the resolution will be
 guessed from the Hi-C data.}
 
-\item{score_col}{Specify which column represents cofrag scores. Default is NULL,}
+\item{score_col}{Specify which column represents cofrag scores. Default is 7
+(the 7th column).}
 
-\item{scale_score}{Scale scales to the interval \link{0, 1}
-which indicates the 7th column}
+\item{bootstrap}{If multiple bootstrap records exist, only return results for
+specified bootstrap iterations. If NULL, results for all bootstrap
+iterations will be retunred.}
 }
 \description{
 Load Hi-C data in BED format
