@@ -10,16 +10,16 @@ compartment_fanc(
   resol,
   ev = 1:2,
   genome = NULL,
-  keep_ab = FALSE,
-  ab_file = NULL
+  ab_file = NULL,
+  keep_ab = !is_null(ab_file)
 )
 }
 \arguments{
 \item{ev}{an integer vector specifying which eigenvectors to calculate}
 
-\item{keep_ab}{if \code{TRUE}, keep the AB matrix file}
-
 \item{ab_file}{path to a pre-calculated AB matrix file}
+
+\item{keep_ab}{if \code{TRUE}, keep the AB matrix file. This requires \code{ab_file = NULL}}
 }
 \description{
 Get compartment using FANC, from an existing .hic file

@@ -1,6 +1,6 @@
 Package: hictools
 Title: Home-made handy tools for Hi-C
-Version: 0.1.8
+Version: 0.1.9
 Authors@R: 
     person(given = "Haizi",
            family = "Zheng",
@@ -17,7 +17,7 @@ Imports:
     tidyverse,
     here,
     zoo,
-    bedtorch (>= 0.1.12.9),
+    bedtorch (>= 0.1.12.10),
     strawr (>= 0.0.9),
     purrr,
     ggplot2,
