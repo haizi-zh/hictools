@@ -834,7 +834,6 @@ pearson_juicer <-
         )
       )
       cat(cmd, "\n")
-      browser()
       system(cmd)
       
       lines <- read_lines(temp_matrix) %>% str_trim()

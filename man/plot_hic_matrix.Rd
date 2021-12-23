@@ -14,7 +14,6 @@ plot_hic_matrix(
   missing_value = NULL,
   n.breaks = NULL,
   color_palette = "viridis",
-  matrix = "observed",
   gamma = "auto",
   tile_outline = NULL,
   verbose = FALSE

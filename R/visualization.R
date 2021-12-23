@@ -111,7 +111,6 @@ plot_hic_matrix <- function(hic,
                             missing_value = NULL,
                             n.breaks = NULL,
                             color_palette = "viridis",
-                            matrix = "observed",
                             gamma = "auto",
                             tile_outline = NULL,
                             verbose = FALSE) {
@@ -177,12 +176,10 @@ plot_hic_matrix <- function(hic,
 
   resol <- attr(hic, "resol")
   stopifnot(resol > 0)
-
-  if (is(hic, "data.table"))
-    hic <- data.table::as.data.table(hic)
-  if (!is.null(control_hic) && is(control_hic, "data.table"))
-    control_hic <- data.table::as.data.table(control_hic)
   
+  assert_that(is(hic, "ht_table"))
+  assert_that(is.null(control_hic) || is(control_hic, "ht_table"))
+
   transform <- match.arg(transform)
 
   # Ensure the input is upper trangular
@@ -194,23 +191,28 @@ plot_hic_matrix <- function(hic,
     stopifnot(attr(control_hic, "resol") == resol)
   }
 
-  hic[, score := transcale(score, transform)]
+  if (hic_type(hic) != "pearson")
+    hic[, score := transcale(score, transform)]
 
   full_matrix <- if (is.null(control_hic)) {
     full_matrix <- build_full_matrix(hic, hic)
   } else {
-    control_hic[, score := transcale(score, transform)]
+    if (hic_type(control_hic) != "pearson")
+      control_hic[, score := transcale(score, transform)]
     full_matrix <- build_full_matrix(hic, control_hic)
   }
   
-  if (gamma == "auto") {
-    gamma <- auto_gamma(
-      score_diag = filter(hic, pos1 == pos2)$score,
-      score_off_diag = filter(hic, pos1 != pos2)$score)
-    if (verbose)
-      cat(paste0("Automatically estimate the best gamma: ", gamma))
+  if (hic_type(hic) != "pearson") {
+    if (gamma == "auto") {
+      gamma <- auto_gamma(
+        score_diag = filter(hic, pos1 == pos2)$score,
+        score_off_diag = filter(hic, pos1 != pos2)$score
+      )
+      if (verbose)
+        cat(paste0("Automatically estimate the best gamma: ", gamma))
+    }
+    full_matrix %<>% mutate(score = score ** gamma)
   }
-  full_matrix %<>% mutate(score = score ** gamma)
 
   gr <- local({
     pos <- with(full_matrix, c(pos1, pos2))
@@ -257,7 +259,7 @@ plot_hic_matrix <- function(hic,
     ylab(gr_str) +
     theme(legend.position = "none")
 
-  if (matrix == "pearson")
+  if (hic_type(hic) == "pearson")
     p + scale_fill_gradientn(colors = c("blue", "black", "red"), values = c(0, 0.5, 1))
   else
     p + scale_fill_gradientn(colors = hic_colors$colors, values = hic_colors$values)
