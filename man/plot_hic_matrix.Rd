@@ -5,22 +5,23 @@
 \title{Visualize Hi-C data}
 \usage{
 plot_hic_matrix(
-  hic_matrix,
+  hic,
   chrom = NULL,
-  control_hic_matrix = NULL,
+  control_hic = NULL,
   scale_factor = c(1, 1),
   norm = c(0, 1),
-  transform = NULL,
+  transform = c("log10", "linear"),
   missing_value = NULL,
   n.breaks = NULL,
   color_palette = "viridis",
   matrix = "observed",
-  gamma = 2.3,
-  tile_outline = NULL
+  gamma = "auto",
+  tile_outline = NULL,
+  verbose = FALSE
 )
 }
 \arguments{
-\item{chrom}{Indicate which chromosome to process. If \code{NULL}, \code{hic_matrix}
+\item{chrom}{Indicate which chromosome to process. If \code{NULL}, \code{hic}
 should contain only one chromosome, which will be used in the
 visualization.}
 }

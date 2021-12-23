@@ -96,24 +96,25 @@ plot_compartment <-
 #'
 #' Show a heatmap of the Hi-C data
 #'
-#' @param chrom Indicate which chromosome to process. If `NULL`, `hic_matrix`
+#' @param chrom Indicate which chromosome to process. If `NULL`, `hic`
 #'   should contain only one chromosome, which will be used in the
 #'   visualization.
 #' @export
-plot_hic_matrix <- function(hic_matrix,
+plot_hic_matrix <- function(hic,
                             chrom = NULL,
-                            control_hic_matrix = NULL,
+                            control_hic = NULL,
                             # control_gm = NULL,
                             scale_factor = c(1, 1),
                             norm = c(0, 1),
-                            transform = "log10",
+                            transform = c("log10", "linear"),
                             # symfill = TRUE,
                             missing_value = NULL,
                             n.breaks = NULL,
                             color_palette = "viridis",
                             matrix = "observed",
                             gamma = "auto",
-                            tile_outline = NULL) {
+                            tile_outline = NULL,
+                            verbose = FALSE) {
   
   # Scale a numeric vector to range [a, b]
   scale_to_range <- function(x, a = 0, b = 1) {
@@ -144,25 +145,19 @@ plot_hic_matrix <- function(hic_matrix,
     return(billboard$gamma[1])
   }
   
-  if (is_null(chrom))
-    chrom <- unique(c(hic_matrix$chrom1, hic_matrix$chrom2) %>% as.character())
-  assert_that(is_scalar_character(chrom))
-
-  resol <- attr(hic_matrix, "resol")
-  stopifnot(resol > 0)
-
-  if (is(hic_matrix, "data.table"))
-    hic_matrix <- as_tibble(hic_matrix)
-
-  # Ensure the input is upper trangular
-  hic_matrix %<>% filter(chrom1 == chrom & chrom2 == chrom)
-  stopifnot(with(hic_matrix, all(pos1 <= pos2)))
-  if (!is.null(control_hic_matrix)) {
-    control_hic_matrix %<>% filter(chrom1 == chrom & chrom2 == chrom)
-    stopifnot(with(control_hic_matrix, all(pos1 <= pos2)))
-    stopifnot(attr(control_hic_matrix, "resol") == resol)
+  # Transform & scale to [0, 1]
+  transcale <- function(score, transform, scale_min = 0, scale_max = 1) {
+    if (transform == "log10") {
+      score <- log10(pmax(score, 1))
+    } else if (transform != "linear") {
+      stop(paste0("Invalid transform: ", transform), call. = FALSE)
+    }
+    
+    m1 <- min(score)
+    m2 <- max(score)
+    return((score - m1) / (m2 - m1) * (scale_max - scale_min) + scale_min)
   }
-
+  
   # Build the full matrix using the upper upper triangular
   build_full_matrix <- function(gm1, gm2) {
     rbind(
@@ -175,12 +170,47 @@ plot_hic_matrix <- function(hic_matrix,
         ) %>% select(-s)
     )
   }
+  
+  if (is_null(chrom))
+    chrom <- unique(c(hic$chrom1, hic$chrom2) %>% as.character())
+  assert_that(is_scalar_character(chrom))
 
-  full_matrix <- if (is.null(control_hic_matrix)) {
-    full_matrix <- build_full_matrix(hic_matrix, hic_matrix)
-  } else {
-    full_matrix <- build_full_matrix(control_hic_matrix, hic_matrix)
+  resol <- attr(hic, "resol")
+  stopifnot(resol > 0)
+
+  if (is(hic, "data.table"))
+    hic <- data.table::as.data.table(hic)
+  if (!is.null(control_hic) && is(control_hic, "data.table"))
+    control_hic <- data.table::as.data.table(control_hic)
+  
+  transform <- match.arg(transform)
+
+  # Ensure the input is upper trangular
+  hic %<>% filter(chrom1 == chrom & chrom2 == chrom)
+  stopifnot(with(hic, all(pos1 <= pos2)))
+  if (!is.null(control_hic)) {
+    control_hic %<>% filter(chrom1 == chrom & chrom2 == chrom)
+    stopifnot(with(control_hic, all(pos1 <= pos2)))
+    stopifnot(attr(control_hic, "resol") == resol)
   }
+
+  hic[, score := transcale(score, transform)]
+
+  full_matrix <- if (is.null(control_hic)) {
+    full_matrix <- build_full_matrix(hic, hic)
+  } else {
+    control_hic[, score := transcale(score, transform)]
+    full_matrix <- build_full_matrix(hic, control_hic)
+  }
+  
+  if (gamma == "auto") {
+    gamma <- auto_gamma(
+      score_diag = filter(hic, pos1 == pos2)$score,
+      score_off_diag = filter(hic, pos1 != pos2)$score)
+    if (verbose)
+      cat(paste0("Automatically estimate the best gamma: ", gamma))
+  }
+  full_matrix %<>% mutate(score = score ** gamma)
 
   gr <- local({
     pos <- with(full_matrix, c(pos1, pos2))
@@ -188,29 +218,6 @@ plot_hic_matrix <- function(hic_matrix,
   })
   gr_str <-
     str_interp("${chrom}:$[d]{gr[1] + 1}-$[d]{gr[2] + resol}")
-
-  # Transform & normalization
-  full_matrix$score <- local({
-    if (is.null(transform))
-      score <- full_matrix$score
-    else if (transform == "log10") {
-      score <- full_matrix$score
-      score[score < 1] <- 1
-      score <- log10(score)
-    } else {
-      stop(transform)
-    }
-
-    m1 <- min(score)
-    m2 <- max(score)
-    (score - m1) / (m2 - m1)
-  })
-  
-  if (gamma == "auto")
-    gamma <- auto_gamma(
-      score_diag = filter(full_matrix, pos1 == pos2)$score,
-      score_off_diag = filter(full_matrix, pos1 != pos2)$score)
-  full_matrix %<>% mutate(score = score ** gamma)
 
   hic_colors <- list(
     colors = c(
@@ -244,10 +251,10 @@ plot_hic_matrix <- function(hic_matrix,
     ) +
     scale_y_reverse(labels = scales::number_format(accuracy = 1),
                     n.breaks = n.breaks) +
-    ylab(paste0(ifelse(
-      is.null(control_hic_matrix), "", "Control: "
+    xlab(paste0(ifelse(
+      is.null(control_hic), "", "Control: "
     ), gr_str)) +
-    xlab(gr_str) +
+    ylab(gr_str) +
     theme(legend.position = "none")
 
   if (matrix == "pearson")
