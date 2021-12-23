@@ -1,8 +1,8 @@
 #' @importFrom readr read_lines read_delim
 #' @importFrom stringr str_interp str_split str_detect str_sort str_match str_trim str_remove
-#' @importFrom purrr map map_int map_dbl map_lgl map_chr walk pwalk pmap_chr pmap_dfr `%||%` discard keep
+#' @importFrom purrr map map_int map_dbl map_lgl map_chr map_dfr walk pwalk pmap_chr pmap_dfr `%||%` discard keep
 #' @importFrom tidyr expand_grid
-#' @importFrom dplyr `%>%` select rename
+#' @importFrom dplyr `%>%` select filter rename mutate as_tibble tibble arrange desc
 #' @importFrom magrittr `%<>%` set_attr
 #' @importFrom rhdf5 h5read
 #' @import ggplot2

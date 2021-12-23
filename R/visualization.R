@@ -106,14 +106,44 @@ plot_hic_matrix <- function(hic_matrix,
                             # control_gm = NULL,
                             scale_factor = c(1, 1),
                             norm = c(0, 1),
-                            transform = NULL,
+                            transform = "log10",
                             # symfill = TRUE,
                             missing_value = NULL,
                             n.breaks = NULL,
                             color_palette = "viridis",
                             matrix = "observed",
-                            gamma = 2.3,
+                            gamma = "auto",
                             tile_outline = NULL) {
+  
+  # Scale a numeric vector to range [a, b]
+  scale_to_range <- function(x, a = 0, b = 1) {
+    return((x - min(x, na.rm = TRUE)) /
+             (max(x, na.rm = TRUE) - min(x, na.rm = TRUE)) * (b - a) + a)
+  }
+  
+  # Calculate the best gamma value for the plot
+  auto_gamma <- function(score_diag, score_off_diag) {
+    billboard <- purrr::map_dfr(seq(1, 10, by = 0.1), function(gamma) {
+      score_diag <- score_diag ** gamma
+      score_off_diag <- score_off_diag ** gamma
+      list(
+        gamma = gamma,
+        delta_m = abs(
+          median(score_diag, na.rm = TRUE) - median(score_off_diag, na.rm = TRUE)
+        ),
+        sd_off_diag = sd(score_off_diag, na.rm = TRUE)
+      )
+    }) %>%
+      mutate(
+        delta_m = scale_to_range(delta_m),
+        sd_off_diag = scale_to_range(sd_off_diag)
+      ) %>%
+      mutate(order_value = delta_m + sd_off_diag) %>%
+      arrange(desc(order_value))
+    
+    return(billboard$gamma[1])
+  }
+  
   if (is_null(chrom))
     chrom <- unique(c(hic_matrix$chrom1, hic_matrix$chrom2) %>% as.character())
   assert_that(is_scalar_character(chrom))
@@ -160,7 +190,7 @@ plot_hic_matrix <- function(hic_matrix,
     str_interp("${chrom}:$[d]{gr[1] + 1}-$[d]{gr[2] + resol}")
 
   # Transform & normalization
-  local({
+  full_matrix$score <- local({
     if (is.null(transform))
       score <- full_matrix$score
     else if (transform == "log10") {
@@ -171,12 +201,15 @@ plot_hic_matrix <- function(hic_matrix,
       stop(transform)
     }
 
-    # browser()
     m1 <- min(score)
     m2 <- max(score)
-    score <- (score - m1) / (m2 - m1)
-    full_matrix$score <<- score * (norm[2] - norm[1]) + norm[1]
+    (score - m1) / (m2 - m1)
   })
+  
+  if (gamma == "auto")
+    gamma <- auto_gamma(
+      score_diag = filter(full_matrix, pos1 == pos2)$score,
+      score_off_diag = filter(full_matrix, pos1 != pos2)$score)
   full_matrix %<>% mutate(score = score ** gamma)
 
   hic_colors <- list(
