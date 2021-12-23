@@ -432,13 +432,12 @@ write_juicer_hic <-
            file_path,
            juicertools = get_juicer_tools(),
            java = "java",
-           ref_genome = c("hg19", "hg38"),
-           norm = c("VC", "VC_SQRT", "KR", "SCALE")) {
+           norm = c("NONE", "VC", "VC_SQRT", "KR", "SCALE")) {
     norm <- match.arg(norm, several.ok = TRUE)
     norm <- paste(norm, collapse = ",")
     
-    ref_genome <- match.arg(ref_genome)
-    # stopifnot(ref_genome == "hg19")
+    
+    ref_genome <- get_juicer_genome(hic_genome(hic_matrix))
     
     # Usually, it doesn't make sense to write the Hi-C data if it is not observed/NONE)
     hic_type <- attr(hic_matrix, "type")

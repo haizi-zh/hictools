@@ -4,7 +4,13 @@
 \alias{pearson_juicer}
 \title{Calculate O/E Pearson correlation matrix using Juicer tools}
 \usage{
-pearson_juicer(hic_matrix, chrom, juicertools, java = "java", norm = "NONE")
+pearson_juicer(
+  hic_matrix,
+  chrom,
+  juicertools = get_juicer_tools(),
+  java = "java",
+  norm = "NONE"
+)
 }
 \description{
 Calculate O/E Pearson correlation matrix using Juicer tools

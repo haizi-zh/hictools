@@ -9,8 +9,7 @@ write_juicer_hic(
   file_path,
   juicertools = get_juicer_tools(),
   java = "java",
-  ref_genome = c("hg19", "hg38"),
-  norm = c("VC", "VC_SQRT", "KR", "SCALE")
+  norm = c("NONE", "VC", "VC_SQRT", "KR", "SCALE")
 )
 }
 \arguments{
@@ -20,9 +19,9 @@ write_juicer_hic(
 
 \item{java}{Path to JVM. Default is \code{java}}
 
-\item{ref_genome}{Reference genome \code{hic_matrix} is using. Default is \code{hg19}}
-
 \item{norm}{Calculate specific normalizations. Default is VC,VC_SQRT,KR,SCALE}
+
+\item{ref_genome}{Reference genome \code{hic_matrix} is using. Default is \code{hg19}}
 }
 \description{
 This function invokes Juicer tools for the dumping

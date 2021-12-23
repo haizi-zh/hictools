@@ -116,7 +116,7 @@ oe_juicer <-
           file_path = temp_hic,
           juicertools = juicertools,
           java = java,
-          ref_genome = ref_genome
+          norm = norm
         )
       oe_matrix <-
         load_juicer_hic(
@@ -309,6 +309,18 @@ get_compartment <- function(hic_matrix,
 }
 
 
+# Convert genome to hg19 or hg38
+get_juicer_genome <- function(genome) {
+  if (genome %in% c("hs37-1kg", "hs37d5", "hg19") || grepl(pattern = "^GRCh37(\\.p[0-9]+)?$", x = genome))
+    juicer_genome <- "hg19"
+  else if (genome == "hg38" || grepl(pattern = "^GRCh38(\\.p[0-9]+)?$", x = genome))
+    juicer_genome <- "hg38"
+  else
+    stop(pastep("Unknown genome: ", genome))
+  return(juicer_genome)
+}
+
+
 #' Calculate compartment scores
 #' 
 #' Calculate compartment scores for Hi-C matrix in ht_table format.
@@ -350,19 +362,11 @@ get_compartment.ht_table <- function(hic_matrix,
     hic_file <- tempfile(fileext = ".hic")
     on.exit(file.remove(hic_file), add = TRUE)
     
-    if (genome %in% c("hs37-1kg", "hs37d5", "hg19") || grepl(pattern = "^GRCh37(\\.p[0-9]+)?$", x = genome))
-      juicer_genome <- "hg19"
-    else if (genome == "hg38" || grepl(pattern = "^GRCh38(\\.p[0-9]+)?$", x = genome))
-      juicer_genome <- "hg38"
-    else
-      stop(pastep("Unknown genome: ", genome))
-    
     hic_matrix %>% write_hic(
       file_path = hic_file,
       format = "juicer_hic",
       juicertools = juicertools,
-      java = java,
-      ref_genome = juicer_genome
+      java = java
     )
     
     if (method == "juicer")
@@ -805,7 +809,7 @@ compartment_fanc <- function(hic_file,
 pearson_juicer <-
   function(hic_matrix,
            chrom,
-           juicertools,
+           juicertools = get_juicer_tools(),
            java = "java",
            norm = "NONE") {
     stopifnot(length(chrom) == 1)
@@ -820,7 +824,8 @@ pearson_juicer <-
         hic_matrix = hic_matrix,
         file_path = temp_hic,
         juicertools = juicertools,
-        java = java
+        java = java,
+        norm = "NONE"
       )
       cmd <- str_interp(
         paste0(
@@ -829,6 +834,7 @@ pearson_juicer <-
         )
       )
       cat(cmd, "\n")
+      browser()
       system(cmd)
       
       lines <- read_lines(temp_matrix) %>% str_trim()
