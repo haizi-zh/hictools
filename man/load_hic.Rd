@@ -7,10 +7,20 @@
 load_hic(
   file_path,
   format = c("auto", "juicer_short", "juicer_dump", "juicer_hic", "genbed", "cool"),
+  genome,
   resol = NULL,
+  chrom = NULL,
+  sample = NULL,
+  type = c("observed", "oe", "expected", "pearson", "cofrag"),
+  norm = c("NONE", "KR", "VC", "VC_SQRT", "SCALE"),
   ...
 )
 }
 \description{
-Load Hi-C dataset from file
+This is the gateway function to load Hi-C files in a variety of formats:
+Juicer short, Juicer dump, .hic, BEDPE (aka genbed), etc. For each format, the argument specification may be slightly different. For details, refer to the following:
+\itemize{
+\item \code{\link[=load_juicer_hic]{load_juicer_hic()}}
+\item \code{\link[=load_hic_genbed]{load_hic_genbed()}}
+}
 }

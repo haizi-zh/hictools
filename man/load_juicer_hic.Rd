@@ -6,21 +6,22 @@
 \usage{
 load_juicer_hic(
   file_path,
-  chrom,
   resol,
-  type = c("observed", "oe", "expected", "cofrag"),
-  norm = c("NONE", "KR", "VC", "VC_SQRT"),
-  genome = NULL
+  type,
+  norm,
+  genome,
+  sample = NULL,
+  chrom = NULL
 )
 }
 \arguments{
 \item{file_path}{Path to the .hic file}
 
-\item{chrom}{A character vector to indicate what chromosomes to load}
-
 \item{resol}{Resolution in base pair (BP)}
 
 \item{norm}{See the manual of Juicer tools.}
+
+\item{chrom}{A character vector to indicate what chromosomes to load}
 
 \item{matrix}{Should be \code{observed} or \code{oe}}
 }

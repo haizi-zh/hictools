@@ -39,30 +39,29 @@
 #' @return A Hi-C object
 #' @export
 load_juicer_hic <- function(file_path,
-                            chrom,
                             resol,
-                            type = c("observed", "oe", "expected", "cofrag"),
-                            norm = c("NONE", "KR", "VC", "VC_SQRT"),
-                            genome = NULL) {
-  # The underlying C function can't deal with paths like "~/some_path/some_file.hic"
-  # Need obtain the "canonical" path
-  file_path <- normalizePath(file_path)
-  assert_that(is_scalar_character(file_path), assertthat::is.readable(file_path))
+                            type,
+                            norm,
+                            genome,
+                            sample = NULL,
+                            chrom = NULL) {
+  all_chroms <- strawr::readHicChroms(file_path)$name
+  if (!is.null(chrom)) {
+    assert_that(chrom %in% all_chroms,
+                msg = paste0("Invalid chromosome: ", chrom))
+  } else {
+    warning(paste0(
+      "Loading all chromosomes in the .hic file: ",
+      paste(all_chroms, collapse = ", ")
+    ))
+    chrom <- all_chroms
+  }
   
-  assert_that(
-    is_character(chrom) &&
-      chrom %in% strawr::readHicChroms(file_path)$name,
-    msg = str_interp("Chromosome ${chrom} does not exist in ${file_path}")
-  )
-  
+  assert_that(is_wholenumber(resol))
   resol <- as.integer(resol)
   assert_that(is_scalar_integer(resol) &&
                 resol %in% strawr::readHicBpResolutions(file_path),
               msg = str_interp("Resolution ${resol} does not exist in ${file_path}"))
-  
-  type <- match.arg(type)
-  norm <- match.arg(norm)
-  assert_that(is_null(genome) || !is_null(bedtorch::get_seqinfo(genome)))
   
   straw_read <- function(chrom, type) {
     strawr::straw(
@@ -104,10 +103,11 @@ load_juicer_hic <- function(file_path,
     }) %>%
     data.table::rbindlist() %>%
     ht_table(
-      resol = as.integer(resol),
+      resol = resol,
       type = type,
       norm = norm,
-      genome = genome
+      genome = genome,
+      sample = sample
     )
 }
 
@@ -197,32 +197,26 @@ load_juicer_dump <- function(file_path,
 #'   iterations will be retunred.
 #' @export
 load_hic_genbed <- function(file_path,
+                            type,
+                            norm,
+                            genome,
+                            sample = NULL,
                             resol = NULL,
                             chrom = NULL,
-                            type = c("observed", "oe", "expected", "cofrag"),
-                            norm = c("NONE", "KR", "VC", "VC_SQRT"),
                             score_col = 7L,
-                            genome = NULL,
                             bootstrap = 1L) {
-  assert_that(is_scalar_character(file_path))
   assert_that(is_null(chrom) || is_character(chrom))
-  type <- match.arg(type)
-  norm <- match.arg(norm)
-  assert_that(is_null(genome) ||
-                (
-                  is_scalar_character(genome) &&
-                    !is_null(bedtorch::get_seqinfo(genome))
-                ))
   if (!is_null(bootstrap)) {
-    assert_that(abs(bootstrap - round(bootstrap)) < .Machine$double.eps)
+    assert_that(is_wholenumber(bootstrap))
     bootstrap <- as.integer(bootstrap)
   }
-
-  data <-
-    bedtorch::read_bed(file_path, range = chrom, use_gr = FALSE, genome = genome) %>%
+  data <- bedtorch::read_bed(file_path,
+                             range = chrom,
+                             use_gr = FALSE,
+                             genome = genome) %>%
     data.table::as.data.table()
   
-  # If the column bootstrap exists, this indicates there are multiple scores for each bin pair 
+  # If the column bootstrap exists, this indicates there are multiple scores for each bin pair
   # due to multiple bootstrap iterations.
   # In this case, we only load scores from the first bootstrap
   if ("bootstrap" %in% colnames(data) && !is_null(bootstrap)) {
@@ -231,7 +225,7 @@ load_hic_genbed <- function(file_path,
       data[select_flag]
     })
   }
-
+  
   # The score column should be the 7th column
   data <- select(data, 1:6, all_of(score_col), dplyr::everything())
   # Fix column names
@@ -242,18 +236,26 @@ load_hic_genbed <- function(file_path,
                 "pos2",
                 "end2",
                 "score")
-  col_new <- make.names(c(col_head, tail(colnames(data), n = -7)), unique = TRUE)
+  col_new <-
+    make.names(c(col_head, tail(colnames(data), n = -7)), unique = TRUE)
   data.table::setnames(data, new = col_new)
   
-  data <- data[, `:=`(chrom1 = as.character(chrom1), chrom2 = as.character(chrom2))]
+  data <-
+    data[, `:=`(chrom1 = as.character(chrom1), chrom2 = as.character(chrom2))]
   
   if (is_null(resol))
     resol <- guess_resol(data)
-
+  
   assert_that(is_valid_resol(resol))
-
+  
   data %>% select(-c(end1, end2)) %>%
-    ht_table(resol = resol, type = type, norm = norm, genome = genome)
+    ht_table(
+      resol = resol,
+      type = type,
+      norm = norm,
+      genome = genome,
+      sample = sample
+    )
 }
 
 
@@ -389,31 +391,96 @@ guess_resol <- function(data) {
 
 
 #' Load Hi-C dataset from file
+#' 
+#' @description 
+#' This is the gateway function to load Hi-C files in a variety of formats:
+#' Juicer short, Juicer dump, .hic, BEDPE (aka genbed), etc. For each format, the argument specification may be slightly different. For details, refer to the following:
+#' 
+#' * [load_juicer_hic()]
+#' * [load_hic_genbed()]
 #'
 #' @export
 load_hic <-
   function(file_path,
            format = c("auto", "juicer_short", "juicer_dump", "juicer_hic", "genbed", "cool"),
+           genome,
            resol = NULL,
+           chrom = NULL,
+           sample = NULL,
+           type = c("observed", "oe", "expected", "pearson", "cofrag"),
+           norm = c("NONE", "KR", "VC", "VC_SQRT", "SCALE"),
            ...) {
-  format <- match.arg(format)
-  if (format == "auto") {
-    format <- guess_format(file_path)
-  }
-  if (format == "juicer_short") {
-    data <- load_juicer_short(file_path, ...)
-  } else if (format == "juicer_dump") {
-    data <- load_juicer_dump(file_path, ...)
-  } else if (format == "juicer_hic") {
-    data <- load_juicer_hic(file_path, resol = resol, ...)
-  } else if (format == "genbed") {
-    data <- load_hic_genbed(file_path = file_path, ...)
-  } else if (format == "cool") {
-    data <- load_hic_cool(file_path = file_path, ...)
-  } else {
-    stop(str_interp("Invalid format ${format}"))
-  }
-  data
+    # The underlying C function can't deal with paths like "~/some_path/some_file.hic"
+    # Need obtain the "canonical" path
+    file_path <- normalizePath(file_path)
+    assert_that(assertthat::is.readable(file_path))
+    assert_that(is_scalar_character(genome) &&
+                  !is_null(bedtorch::get_seqinfo(genome)))
+    format <- match.arg(format)
+    type <- match.arg(type)
+    norm <- match.arg(norm)
+    
+    mf = match.call(expand.dots = TRUE)
+    mf$format <- NULL
+    mf$type <- type
+    mf$norm <- norm
+    
+    if (format == "auto") {
+      format <- guess_format(file_path)
+    }
+    if (format == "juicer_short") {
+      mf[[1L]] <- quote(load_juicer_short)
+    } else if (format == "juicer_dump") {
+      mf[[1L]] <- quote(load_juicer_dump)
+    } else if (format == "juicer_hic") {
+      mf[[1L]] <- quote(load_juicer_hic)
+    } else if (format == "genbed") {
+      mf[[1L]] <- quote(load_hic_genbed)
+    } else if (format == "cool") {
+      mf[[1L]] <- quote(load_hic_coll)
+    } else {
+      stop(str_interp("Invalid format ${format}"))
+    }
+    
+    eval.parent(mf)
+  #   
+  #   m <- match.call(expand.dots = FALSE)
+  #   if (is.matrix(eval.parent(m$data)))  m$data <- as.data.frame(data, stringsAsFactors = TRUE)
+  #   m$... <- m$contrasts <- NULL
+  #   
+  #   check_na_conflict(match.call(expand.dots = TRUE))
+  #   
+  #   ## Look for missing `na.action` in call. To make the default (`na.fail`)
+  #   ## recognizable by `eval.parent(m)`, we need to add it to the call
+  #   ## object `m`
+  #   
+  #   if(!("na.action" %in% names(m))) m$na.action <- quote(na.fail)
+  #   
+  #   # do we need the double colon here?
+  #   m[[1]] <- quote(stats::model.frame)
+  #   m <- eval.parent(m)
+  #   
+  #   
+  # 
+  # 
+  # 
+  # if (format == "auto") {
+  #   format <- guess_format(file_path)
+  # }
+  # if (format == "juicer_short") {
+  #   data <- load_juicer_short(file_path, ...)
+  # } else if (format == "juicer_dump") {
+  #   data <- load_juicer_dump(file_path, ...)
+  # } else if (format == "juicer_hic") {
+  #   data <- load_juicer_hic(file_path, ...)
+  # } else if (format == "genbed") {
+  #   data <- load_hic_genbed(file_path = file_path, ...)
+  # } else if (format == "cool") {
+  #   data <- load_hic_cool(file_path = file_path, ...)
+  # } else {
+  #   stop(str_interp("Invalid format ${format}"))
+  # }
+  # data
 }
 
 

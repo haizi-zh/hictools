@@ -6,12 +6,13 @@
 \usage{
 load_hic_genbed(
   file_path,
+  type,
+  norm,
+  genome,
+  sample = NULL,
   resol = NULL,
   chrom = NULL,
-  type = c("observed", "oe", "expected", "cofrag"),
-  norm = c("NONE", "KR", "VC", "VC_SQRT"),
   score_col = 7L,
-  genome = NULL,
   bootstrap = 1L
 )
 }
