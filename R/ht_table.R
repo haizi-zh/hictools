@@ -7,7 +7,8 @@ new_ht_table <-
            resol,
            type = c("observed", "oe", "expected", "pearson", "cofrag"),
            norm = c("NONE", "KR", "VC", "VC_SQRT"),
-           genome = NULL) {
+           genome = NULL,
+           sample = NULL) {
     assert_that(is(dt, "data.frame"))
     assert_that(is_null(genome) || is_character(genome))
     resol <- as.integer(resol)
@@ -23,6 +24,7 @@ new_ht_table <-
     data.table::setattr(dt, "type", type)
     data.table::setattr(dt, "norm", norm)
     data.table::setattr(dt, "genome", genome)
+    data.table::setattr(dt, "sample", sample)
 
     dt
   }
@@ -50,6 +52,8 @@ validate_ht_table <- function(ht) {
   assert_that(is_scalar_character(norm) && norm %in% c("NONE", "KR", "VC", "VC_SQRT"))
   genome <- attr(ht, "genome")
   assert_that(is_null(genome) || is_scalar_character(genome))
+  sample <- attr(ht, "sample")
+  assert_that(is_null(sample) || is_scalar_character(sample))
 
   ht
 }
@@ -81,7 +85,7 @@ ht_table <-
       genome <- hic_genome(copy_from)
       
     } 
-    validate_ht_table(new_ht_table(dt, resol, type, norm, genome))
+    validate_ht_table(new_ht_table(dt, resol, type, norm, genome, sample))
   }
 
 

@@ -73,17 +73,19 @@ concat_hic <- function(hic_list) {
 #' Set Hi-C normalization method
 #' 
 #' @param hic a `ht_table` object
+#' @export
 `hic_norm<-` <- function(hic, value = c("NONE", "KR", "VC", "VC_SQRT")) {
   assert_that(is(hic, "ht_table"))
   value <- match.arg(value)
   
-  attr(hic, "norm") <- value
+  data.table::setattr(hic, "norm", value)
   return(hic)
 }
 
 #' Get Hi-C normalization method
 #' 
 #' @param hic a `ht_table` object
+#' @export
 hic_norm <- function(hic) {
   assert_that(is(hic, "ht_table"))
   return(attr(hic, "norm"))
@@ -92,6 +94,7 @@ hic_norm <- function(hic) {
 #' Get Hi-C data type
 #' 
 #' @param hic a `ht_table` object
+#' @export
 hic_type <- function(hic) {
   assert_that(is(hic, "ht_table"))
   return(attr(hic, "type"))
@@ -100,11 +103,12 @@ hic_type <- function(hic) {
 #' Set Hi-C data type
 #' 
 #' @param hic a `ht_table` object
+#' @export
 `hic_type<-` <- function(hic, value = c("observed", "oe", "expected", "pearson", "cofrag")) {
   assert_that(is(hic, "ht_table"))
   value <- match.arg(value)
   
-  attr(hic, "type") <- value
+  data.table::setattr(hic, "type", value)
   return(hic)
 }
 
@@ -112,6 +116,7 @@ hic_type <- function(hic) {
 #' Get Hi-C genome
 #' 
 #' @param hic a `ht_table` object
+#' @export
 hic_genome <- function(hic) {
   assert_that(is(hic, "ht_table"))
   return(attr(hic, "genome"))
@@ -121,6 +126,7 @@ hic_genome <- function(hic) {
 #' Set Hi-C genome
 #' 
 #' @param hic a `ht_table` object
+#' @export
 `hic_genome<-` <- function(hic, value) {
   assert_that(is(hic, "ht_table"))
   # Make sure the genome name is valid
@@ -132,7 +138,7 @@ hic_genome <- function(hic) {
     msg = str_interp("Hi-C records are not compatible with genome ${value}")
   )
   
-  attr(hic, "genome") <- value
+  data.table::setattr(hic, "genome", value)
   return(hic)
 }
 
@@ -140,6 +146,7 @@ hic_genome <- function(hic) {
 #' Get Hi-C resolution
 #' 
 #' @param hic a `ht_table` object
+#' @export
 hic_resol <- function(hic) {
   assert_that(is(hic, "ht_table"))
   return(as.integer(attr(hic, "resol")))
@@ -149,6 +156,7 @@ hic_resol <- function(hic) {
 #' Get Hi-C sample name
 #' 
 #' @param hic a `ht_table` object
+#' @export
 hic_sample <- function(hic) {
   assert_that(is(hic, "ht_table"))
   return(attr(hic, "sample"))
@@ -158,10 +166,11 @@ hic_sample <- function(hic) {
 #' Set Hi-C sample name
 #' 
 #' @param hic a `ht_table` object
+#' @export
 `hic_sample<-` <- function(hic, value) {
   assert_that(is(hic, "ht_table"))
   
-  attr(hic, "sample") <- value
+  data.table::setattr(hic, "sample", value)
   return(hic)
 }
 
@@ -172,6 +181,7 @@ hic_sample <- function(hic) {
 #' This may be useful when `hic_matrix` is a cofrag dataset
 #'
 #' @param decay_curve A data frame with two columns: `dist` and `factor`
+#' @export
 decay <- function(hic_matrix, decay_curve) {
   assert_that(is(decay_curve, "data.frame"))
   assert_that(is(hic_matrix, "data.frame"))
@@ -183,4 +193,13 @@ decay <- function(hic_matrix, decay_curve) {
   hic <- merge(hic, decay_curve, all.x = TRUE, by = "dist")[!is.na(factor)]
   hic[, `:=`(score = score * factor, dist = NULL, factor = NULL)]
   return(ht_table(hic, copy_from = hic_matrix))
+}
+
+
+#' Test if `x` is a vector of whole numbers
+is_wholenumber <- function(x, tol = .Machine$double.eps^0.5) {
+  if (!is.numeric(x) || length(x) == 0)
+    return(FALSE)
+  
+  return(abs(x - round(x)) < tol)
 }
