@@ -6,7 +6,7 @@
 \usage{
 pearson_juicer(
   hic_matrix,
-  chrom,
+  chrom = NULL,
   juicertools = get_juicer_tools(),
   java = "java",
   norm = "NONE"

@@ -188,7 +188,7 @@ decay <- function(hic_matrix, decay_curve) {
   assert_that(is(hic_matrix, "data.frame"))
   
   hic <- data.table::copy(hic_matrix)
-  decay_curve %<>% data.table::as.data.table
+  decay_curve <- data.table::as.data.table(decay_curve)
   decay_curve <- decay_curve[, .(dist, factor)]
   hic[, dist := abs(pos2 - pos1)]
   hic <- merge(hic, decay_curve, all.x = TRUE, by = "dist")[!is.na(factor)]

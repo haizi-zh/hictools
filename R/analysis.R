@@ -808,53 +808,68 @@ compartment_fanc <- function(hic_file,
 #' @export
 pearson_juicer <-
   function(hic_matrix,
-           chrom,
+           chrom = NULL,
            juicertools = get_juicer_tools(),
            java = "java",
            norm = "NONE") {
-    stopifnot(length(chrom) == 1)
+    assert_that(is(hic_matrix, "ht_table"))
+    
+    all_chroms <- hic_matrix[, unique(chrom1)]
+    if (is.null(chrom))
+      chrom <- all_chroms
+    else {
+      assert_that(all(chrom %in% all_chroms))
+    }
+    
     resol <- hic_resol(hic_matrix)
     pos_start <- min(c(hic_matrix$pos1, hic_matrix$pos2))
     
-    temp_hic <- tempfile(fileext = ".hic")
-    temp_matrix <- tempfile(fileext = ".txt")
-    on.exit(file.remove(c(temp_hic, temp_matrix)))
-    tryCatch({
-      write_juicer_hic(
-        hic_matrix = hic_matrix,
-        file_path = temp_hic,
-        juicertools = juicertools,
-        java = java,
-        norm = "NONE"
-      )
-      cmd <- str_interp(
-        paste0(
-          "${java} -jar ${juicertools} pearsons ${norm} ",
-          "${temp_hic} ${chrom} BP ${resol} ${temp_matrix}"
+    result <- map(chrom, function(chrom) {
+      hic_matrix <- hic_matrix[chrom1 == chrom & chrom1 == chrom2]
+      
+      temp_hic <- tempfile(fileext = ".hic")
+      temp_matrix <- tempfile(fileext = ".txt")
+      on.exit(file.remove(c(temp_hic, temp_matrix)))
+      tryCatch({
+        write_juicer_hic(
+          hic_matrix = hic_matrix,
+          file_path = temp_hic,
+          juicertools = juicertools,
+          java = java,
+          norm = "NONE"
         )
-      )
-      cat(cmd, "\n")
-      system(cmd)
-      
-      lines <- read_lines(temp_matrix) %>% str_trim()
-      dim <- length(lines)
-      mat <- lines %>%
-        str_split(pattern = "[ ]+") %>%
-        unlist() %>%
-        as.numeric() %>%
-        matrix(nrow = dim, byrow = TRUE)
-      mat[is.nan(mat)] <- NA
-      
-      hic_pearson <- mat %>% convert_matrix_hic(
-        chrom = chrom,
-        resol = resol,
-        pos_start = 0,
-        copy_from = hic_matrix
-      )
-      hic_type(hic_pearson) <- "pearson"
-      return(hic_pearson)
-    }, finally = {
+        cmd <- str_interp(
+          paste0(
+            "${java} -jar ${juicertools} pearsons ${norm} ",
+            "${temp_hic} ${chrom} BP ${resol} ${temp_matrix}"
+          )
+        )
+        cat(cmd, "\n")
+        system(cmd)
+        
+        lines <- read_lines(temp_matrix) %>% str_trim()
+        dim <- length(lines)
+        mat <- lines %>%
+          str_split(pattern = "[ ]+") %>%
+          unlist() %>%
+          as.numeric() %>%
+          matrix(nrow = dim, byrow = TRUE)
+        mat[is.nan(mat)] <- NA
+        
+        hic_pearson <- mat %>% convert_matrix_hic(
+          chrom = chrom,
+          resol = resol,
+          pos_start = 0,
+          copy_from = hic_matrix
+        )
+        hic_type(hic_pearson) <- "pearson"
+        return(hic_pearson)
+      }, finally = {
+        
+      })
     })
+    
+    data.table::rbindlist(result) %>% ht_table(copy_from = result[[1]])
   }
 
 

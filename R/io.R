@@ -635,7 +635,7 @@ convert_matrix_hic <- function(mat, chrom, resol, pos_start, ...) {
     na.omit() %>%
     set_attr("resol", resol) %>%
     select(chrom1, pos1, chrom2, pos2, score) %>%
-    ht_table(resol, ...)
+    ht_table(resol = resol, ...)
 }
 
 #' Convert a Hi-C map to a naive matrix
