@@ -813,7 +813,7 @@ pearson_juicer <-
            java = "java",
            norm = "NONE") {
     stopifnot(length(chrom) == 1)
-    resol <- attr(hic_matrix, "resol")
+    resol <- hic_resol(hic_matrix)
     pos_start <- min(c(hic_matrix$pos1, hic_matrix$pos2))
     
     temp_hic <- tempfile(fileext = ".hic")
@@ -845,7 +845,14 @@ pearson_juicer <-
         matrix(nrow = dim, byrow = TRUE)
       mat[is.nan(mat)] <- NA
       
-      mat %>% convert_matrix_hic(chrom = chrom, resol = resol, pos_start = 0)
+      hic_pearson <- mat %>% convert_matrix_hic(
+        chrom = chrom,
+        resol = resol,
+        pos_start = 0,
+        copy_from = hic_matrix
+      )
+      hic_type(hic_pearson) <- "pearson"
+      return(hic_pearson)
     }, finally = {
     })
   }
@@ -859,10 +866,17 @@ pearson_ht <- function(hic_matrix, chrom, method = "lieberman") {
   pos_start <- min(c(hic_matrix$pos1, hic_matrix$pos2))
   resol <- attr(hic_matrix, "resol")
   oe <- oe_ht(hic_matrix, method = method)
-  oe %>%
+  hic_pearson <- oe %>%
     convert_hic_matrix(chrom = chrom) %>%
     cor(use = "pairwise.complete.obs") %>%
-    convert_matrix_hic(chrom = chrom, resol = resol, pos_start = pos_start)
+    convert_matrix_hic(
+      chrom = chrom,
+      resol = resol,
+      pos_start = pos_start,
+      copy_from = hic_matrix
+    )
+  hic_type(hic_pearson) <- "pearson"
+  return(hic_pearson)
 }
 
 

@@ -546,7 +546,7 @@ write_hic_bedtorch <- function(hic_matrix, file_path, comments = NULL) {
 }
 
 
-convert_matrix_hic <- function(mat, chrom, resol, pos_start) {
+convert_matrix_hic <- function(mat, chrom, resol, pos_start, ...) {
   stopifnot(nrow(mat) == ncol(mat))
   dim <- nrow(mat)
   stopifnot(length(chrom) == 1)
@@ -565,7 +565,8 @@ convert_matrix_hic <- function(mat, chrom, resol, pos_start) {
     filter(pos1 <= pos2) %>%
     na.omit() %>%
     set_attr("resol", resol) %>%
-    select(chrom1, pos1, chrom2, pos2, score)
+    select(chrom1, pos1, chrom2, pos2, score) %>%
+    ht_table(resol, ...)
 }
 
 #' Convert a Hi-C map to a naive matrix
