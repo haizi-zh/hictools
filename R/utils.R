@@ -74,7 +74,7 @@ concat_hic <- function(hic_list) {
 #' 
 #' @param hic a `ht_table` object
 #' @export
-`hic_norm<-` <- function(hic, value = c("NONE", "KR", "VC", "VC_SQRT")) {
+`hic_norm<-` <- function(hic, value = c("NONE", "KR", "VC", "VC_SQRT", "SCALE")) {
   assert_that(is(hic, "ht_table"))
   value <- match.arg(value)
   
@@ -130,6 +130,7 @@ hic_genome <- function(hic) {
 `hic_genome<-` <- function(hic, value) {
   assert_that(is(hic, "ht_table"))
   # Make sure the genome name is valid
+  assert_that(is_scalar_character(value))
   genome <- bedtorch::get_seqinfo(value)
   assert_that(!is.null(genome))
   
@@ -168,7 +169,7 @@ hic_sample <- function(hic) {
 #' @param hic a `ht_table` object
 #' @export
 `hic_sample<-` <- function(hic, value) {
-  assert_that(is(hic, "ht_table"))
+  assert_that(is(hic, "ht_table"), is_scalar_character(value))
   
   data.table::setattr(hic, "sample", value)
   return(hic)
