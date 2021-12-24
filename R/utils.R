@@ -70,7 +70,7 @@ concat_hic <- function(hic_list) {
   )
 }
 
-#' Set HiC normalization method
+#' Set Hi-C normalization method
 #' 
 #' @param hic a `ht_table` object
 `hic_norm<-` <- function(hic, value = c("NONE", "KR", "VC", "VC_SQRT")) {
@@ -81,7 +81,7 @@ concat_hic <- function(hic_list) {
   return(hic)
 }
 
-#' Get HiC normalization method
+#' Get Hi-C normalization method
 #' 
 #' @param hic a `ht_table` object
 hic_norm <- function(hic) {
@@ -89,7 +89,7 @@ hic_norm <- function(hic) {
   return(attr(hic, "norm"))
 }
 
-#' Get HiC data type
+#' Get Hi-C data type
 #' 
 #' @param hic a `ht_table` object
 hic_type <- function(hic) {
@@ -97,10 +97,10 @@ hic_type <- function(hic) {
   return(attr(hic, "type"))
 }
 
-#' Set HiC data type
+#' Set Hi-C data type
 #' 
 #' @param hic a `ht_table` object
-`hic_type<-` <- function(hic, value = c("observed", "oe", "expected", "cofrag")) {
+`hic_type<-` <- function(hic, value = c("observed", "oe", "expected", "pearson", "cofrag")) {
   assert_that(is(hic, "ht_table"))
   value <- match.arg(value)
   
@@ -109,7 +109,7 @@ hic_type <- function(hic) {
 }
 
 
-#' Get HiC genome
+#' Get Hi-C genome
 #' 
 #' @param hic a `ht_table` object
 hic_genome <- function(hic) {
@@ -118,7 +118,7 @@ hic_genome <- function(hic) {
 }
 
 
-#' Set HiC genome
+#' Set Hi-C genome
 #' 
 #' @param hic a `ht_table` object
 `hic_genome<-` <- function(hic, value) {
@@ -129,7 +129,7 @@ hic_genome <- function(hic) {
   
   assert_that(
     unique(c(hic$chrom1, hic$chrom2)) %in% GenomicRanges::seqnames(genome),
-    msg = str_interp("HiC records are not compatible with genome ${value}")
+    msg = str_interp("Hi-C records are not compatible with genome ${value}")
   )
   
   attr(hic, "genome") <- value
@@ -137,10 +137,30 @@ hic_genome <- function(hic) {
 }
 
 
-#' Get HiC resolution
+#' Get Hi-C resolution
 #' 
 #' @param hic a `ht_table` object
 hic_resol <- function(hic) {
   assert_that(is(hic, "ht_table"))
   return(as.integer(attr(hic, "resol")))
+}
+
+
+#' Get Hi-C sample name
+#' 
+#' @param hic a `ht_table` object
+hic_sample <- function(hic) {
+  assert_that(is(hic, "ht_table"))
+  return(attr(hic, "sample"))
+}
+
+
+#' Set Hi-C sample name
+#' 
+#' @param hic a `ht_table` object
+`hic_sample<-` <- function(hic, value) {
+  assert_that(is(hic, "ht_table"))
+  
+  attr(hic, "sample") <- value
+  return(hic)
 }

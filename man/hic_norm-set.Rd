@@ -2,7 +2,7 @@
 % Please edit documentation in R/utils.R
 \name{hic_norm<-}
 \alias{hic_norm<-}
-\title{Set HiC normalization method}
+\title{Set Hi-C normalization method}
 \usage{
 hic_norm(hic) <- value
 }
@@ -10,5 +10,5 @@ hic_norm(hic) <- value
 \item{hic}{a \code{ht_table} object}
 }
 \description{
-Set HiC normalization method
+Set Hi-C normalization method
 }

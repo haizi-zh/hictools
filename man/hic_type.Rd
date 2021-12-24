@@ -2,7 +2,7 @@
 % Please edit documentation in R/utils.R
 \name{hic_type}
 \alias{hic_type}
-\title{Get HiC data type}
+\title{Get Hi-C data type}
 \usage{
 hic_type(hic)
 }
@@ -10,5 +10,5 @@ hic_type(hic)
 \item{hic}{a \code{ht_table} object}
 }
 \description{
-Get HiC data type
+Get Hi-C data type
 }

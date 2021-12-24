@@ -2,7 +2,7 @@
 % Please edit documentation in R/utils.R
 \name{hic_norm}
 \alias{hic_norm}
-\title{Get HiC normalization method}
+\title{Get Hi-C normalization method}
 \usage{
 hic_norm(hic)
 }
@@ -10,5 +10,5 @@ hic_norm(hic)
 \item{hic}{a \code{ht_table} object}
 }
 \description{
-Get HiC normalization method
+Get Hi-C normalization method
 }

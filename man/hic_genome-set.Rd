@@ -2,7 +2,7 @@
 % Please edit documentation in R/utils.R
 \name{hic_genome<-}
 \alias{hic_genome<-}
-\title{Set HiC genome}
+\title{Set Hi-C genome}
 \usage{
 hic_genome(hic) <- value
 }
@@ -10,5 +10,5 @@ hic_genome(hic) <- value
 \item{hic}{a \code{ht_table} object}
 }
 \description{
-Set HiC genome
+Set Hi-C genome
 }

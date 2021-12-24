@@ -2,7 +2,7 @@
 % Please edit documentation in R/utils.R
 \name{hic_type<-}
 \alias{hic_type<-}
-\title{Set HiC data type}
+\title{Set Hi-C data type}
 \usage{
 hic_type(hic) <- value
 }
@@ -10,5 +10,5 @@ hic_type(hic) <- value
 \item{hic}{a \code{ht_table} object}
 }
 \description{
-Set HiC data type
+Set Hi-C data type
 }

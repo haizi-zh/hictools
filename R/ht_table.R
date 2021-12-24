@@ -64,13 +64,23 @@ validate_ht_table <- function(ht) {
 #' @param norm Indicate whether any normalization method has been applied.
 #' @param genome A character scalar specifying the genome name. For example:
 #'   `hg37-1kg`. Can be `NULL` if no genome is specified.
+#' @param copy_from Copy attributes from an existing `ht_table` object
 #' @export
 ht_table <-
   function(dt,
-           resol,
-           type,
-           norm,
-           genome) {
+           sample = NULL,
+           resol = NULL,
+           type = NULL,
+           norm = NULL,
+           genome = NULL,
+           copy_from = NULL) {
+    if (!is.null(copy_from)) {
+      resol <- hic_resol(copy_from)
+      type <- hic_type(copy_from)
+      norm <- hic_norm(copy_from)
+      genome <- hic_genome(copy_from)
+      
+    } 
     validate_ht_table(new_ht_table(dt, resol, type, norm, genome))
   }
 
@@ -79,12 +89,14 @@ ht_table <-
 print.ht_table <- function(x, ...) {
   NextMethod()
 
-  type <- attr(x, "type")
-  norm <- attr(x, "norm")
-  resol <- attr(x, "resol")
-  genome <- attr(x, "genome") %||% "unspecified"
-
+  type <- hic_type(x)
+  norm <- hic_norm(x)
+  resol <- hic_resol(x)
+  genome <- hic_genome(x) %||% "unspecified"
+  sample <- hic_sample(x) %||% "unspecified"
+  
   cat("-------\n")
+  cat(str_interp("Sample: ${sample}\n"))
   cat(str_interp("Resolution: ${resol}\n"))
   cat(str_interp("Type: ${type}\n"))
   cat(str_interp("Norm: ${norm}\n"))

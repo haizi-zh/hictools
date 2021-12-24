@@ -4,7 +4,15 @@
 \alias{ht_table}
 \title{Construct an \code{ht_table} object, which represents a Hi-C-like dataset.}
 \usage{
-ht_table(dt, resol, type, norm, genome)
+ht_table(
+  dt,
+  sample = NULL,
+  resol = NULL,
+  type = NULL,
+  norm = NULL,
+  genome = NULL,
+  copy_from = NULL
+)
 }
 \arguments{
 \item{dt}{A \code{data.frame} input.}
@@ -18,6 +26,8 @@ and \code{cofrag} for cofragmentation contact score.}
 
 \item{genome}{A character scalar specifying the genome name. For example:
 \verb{hg37-1kg}. Can be \code{NULL} if no genome is specified.}
+
+\item{copy_from}{Copy attributes from an existing \code{ht_table} object}
 }
 \description{
 Construct an \code{ht_table} object, which represents a Hi-C-like dataset.
