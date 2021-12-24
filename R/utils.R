@@ -164,3 +164,23 @@ hic_sample <- function(hic) {
   attr(hic, "sample") <- value
   return(hic)
 }
+
+
+
+#' Apply a "decay curve" to a Hi-C matrix
+#' 
+#' This may be useful when `hic_matrix` is a cofrag dataset
+#'
+#' @param decay_curve A data frame with two columns: `dist` and `factor`
+decay <- function(hic_matrix, decay_curve) {
+  assert_that(is(decay_curve, "data.frame"))
+  assert_that(is(hic_matrix, "data.frame"))
+  
+  hic <- data.table::copy(hic_matrix)
+  decay_curve %<>% data.table::as.data.table
+  decay_curve <- decay_curve[, .(dist, factor)]
+  hic[, dist := abs(pos2 - pos1)]
+  hic <- merge(hic, decay_curve, all.x = TRUE, by = "dist")[!is.na(factor)]
+  hic[, `:=`(score = score * factor, dist = NULL, factor = NULL)]
+  return(ht_table(hic, copy_from = hic_matrix))
+}
