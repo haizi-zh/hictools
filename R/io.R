@@ -47,8 +47,10 @@ load_juicer_hic <- function(file_path,
                             chrom = NULL) {
   all_chroms <- strawr::readHicChroms(file_path)$name
   if (!is.null(chrom)) {
-    assert_that(chrom %in% all_chroms,
-                msg = paste0("Invalid chromosome: ", chrom))
+    valid_chrom_flag <- chrom %in% all_chroms
+    assert_that(all(valid_chrom_flag),
+                msg = paste0("Invalid chromosomes: ",
+                             paste(chrom[!valid_chrom_flag], sep = ", ")))
   } else {
     warning(paste0(
       "Loading all chromosomes in the .hic file: ",
@@ -429,15 +431,15 @@ load_hic <-
       format <- guess_format(file_path)
     }
     if (format == "juicer_short") {
-      mf[[1L]] <- quote(load_juicer_short)
+      mf[[1L]] <- quote(hictools::load_juicer_short)
     } else if (format == "juicer_dump") {
-      mf[[1L]] <- quote(load_juicer_dump)
+      mf[[1L]] <- quote(hictools::load_juicer_dump)
     } else if (format == "juicer_hic") {
-      mf[[1L]] <- quote(load_juicer_hic)
+      mf[[1L]] <- quote(hictools::load_juicer_hic)
     } else if (format == "genbed") {
-      mf[[1L]] <- quote(load_hic_genbed)
+      mf[[1L]] <- quote(hictools::load_hic_genbed)
     } else if (format == "cool") {
-      mf[[1L]] <- quote(load_hic_coll)
+      mf[[1L]] <- quote(hictools::load_hic_coll)
     } else {
       stop(str_interp("Invalid format ${format}"))
     }
