@@ -81,7 +81,7 @@ plot_compartment <-
         fill = compartment,
         group = group
       )) + geom_area() +
-      xlab("coordinate") +
+      xlab(NULL) + ylab(NULL) +
       theme(legend.position = "none")
     
     if (full_scale) {
