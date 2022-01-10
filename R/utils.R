@@ -62,12 +62,13 @@ concat_hic <- function(hic_list) {
     hic_list %>% map( ~ attr(., "genome")) %>% unlist() %>% unique()
   assert_that(is_null(genome) || is_scalar_character(genome))
   
-  data.table::rbindlist(l = hic_list) %>% hictools::ht_table(
-    resol = resol,
-    type = type,
-    norm = norm,
-    genome = genome
-  )
+  data.table::rbindlist(l = hic_list) %>%
+    ht_table(
+      resol = resol,
+      type = type,
+      norm = norm,
+      genome = genome
+    )
 }
 
 #' Set Hi-C normalization method

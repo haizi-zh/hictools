@@ -4,7 +4,10 @@
 \alias{convert_hic_matrix}
 \title{Convert a Hi-C map to a naive matrix}
 \usage{
-convert_hic_matrix(hic_matrix, chrom = NULL)
+convert_hic_matrix(hic_matrix, chrom = NULL, missing_score = NA)
+}
+\arguments{
+\item{missing_score}{Scores where the bin does not contain any signal.}
 }
 \description{
 Convert a Hi-C map to a naive matrix

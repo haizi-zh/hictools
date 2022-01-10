@@ -431,15 +431,15 @@ load_hic <-
       format <- guess_format(file_path)
     }
     if (format == "juicer_short") {
-      mf[[1L]] <- quote(hictools::load_juicer_short)
+      mf[[1L]] <- quote(load_juicer_short)
     } else if (format == "juicer_dump") {
-      mf[[1L]] <- quote(hictools::load_juicer_dump)
+      mf[[1L]] <- quote(load_juicer_dump)
     } else if (format == "juicer_hic") {
-      mf[[1L]] <- quote(hictools::load_juicer_hic)
+      mf[[1L]] <- quote(load_juicer_hic)
     } else if (format == "genbed") {
-      mf[[1L]] <- quote(hictools::load_hic_genbed)
+      mf[[1L]] <- quote(load_hic_genbed)
     } else if (format == "cool") {
-      mf[[1L]] <- quote(hictools::load_hic_coll)
+      mf[[1L]] <- quote(load_hic_coll)
     } else {
       stop(str_interp("Invalid format ${format}"))
     }
@@ -639,8 +639,10 @@ convert_matrix_hic <- function(mat, chrom, resol, pos_start, ...) {
 }
 
 #' Convert a Hi-C map to a naive matrix
+#' 
+#' @param missing_score Scores where the bin does not contain any signal.
 #' @export
-convert_hic_matrix <- function(hic_matrix, chrom = NULL) {
+convert_hic_matrix <- function(hic_matrix, chrom = NULL, missing_score = NA) {
   if (is.null(chrom)) {
     # Infer chrom from input
     chrom <- unique(c(as.character(hic_matrix$chrom1), as.character(hic_matrix$chrom2)))
@@ -659,7 +661,7 @@ convert_hic_matrix <- function(hic_matrix, chrom = NULL) {
 
 
   mat_dim <- (max_pos - min_pos) %/% resol + 1
-  mat <- matrix(rep(NA, mat_dim * mat_dim), nrow = mat_dim)
+  mat <- matrix(rep(missing_score, mat_dim * mat_dim), nrow = mat_dim)
   mat[hic_matrix[, .(x, y)] %>% as.matrix()] <- hic_matrix$score
   mat[hic_matrix[, .(y, x)] %>% as.matrix()] <- hic_matrix$score
 

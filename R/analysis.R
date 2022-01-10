@@ -265,7 +265,7 @@ oe_ht <- function(hic_matrix,
       select(chrom1:score, observed) %>%
       set_attr(which = "resol", resol)
   }) %>%
-    hictools::ht_table(
+    ht_table(
       resol = resol,
       type = "oe",
       norm = norm,
@@ -1102,6 +1102,7 @@ comp_correlation <-
 #' Normalize Hi-C matrix
 #' 
 #' @param norm Currently only KR is supported
+#' @export
 normalize_hic <- function(hic_matrix,
                           norm = "KR") {
   assert_that(is(hic_matrix, "ht_table"))
@@ -1113,11 +1114,11 @@ normalize_hic <- function(hic_matrix,
     hic_matrix <- hic_matrix[chrom1 == chrom & chrom2 == chrom]
     pos_start <- hic_matrix[, min(c(pos1, pos2))]
     
-    hictools::convert_hic_matrix(hic_matrix = hic_matrix,
+    convert_hic_matrix(hic_matrix = hic_matrix,
                                  chrom = chrom,
-                                 blank_value = 0) %>%
+                                 missing_score = 0) %>%
       HiCcompare::KRnorm() %>%
-      hictools::convert_matrix_hic(
+      convert_matrix_hic(
         chrom = chrom,
         resol = hic_resol(hic_matrix),
         pos_start = pos_start,
