@@ -431,15 +431,15 @@ load_hic <-
       format <- guess_format(file_path)
     }
     if (format == "juicer_short") {
-      mf[[1L]] <- quote(load_juicer_short)
+      mf[[1L]] <- quote(hictools::load_juicer_short)
     } else if (format == "juicer_dump") {
-      mf[[1L]] <- quote(load_juicer_dump)
+      mf[[1L]] <- quote(hictools::load_juicer_dump)
     } else if (format == "juicer_hic") {
-      mf[[1L]] <- quote(load_juicer_hic)
+      mf[[1L]] <- quote(hictools::load_juicer_hic)
     } else if (format == "genbed") {
-      mf[[1L]] <- quote(load_hic_genbed)
+      mf[[1L]] <- quote(hictools::load_hic_genbed)
     } else if (format == "cool") {
-      mf[[1L]] <- quote(load_hic_coll)
+      mf[[1L]] <- quote(hictools::load_hic_coll)
     } else {
       stop(str_interp("Invalid format ${format}"))
     }
