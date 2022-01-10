@@ -1089,3 +1089,36 @@ comp_correlation <-
         })
     }
   }
+
+
+#' Normalize Hi-C matrix
+#' 
+#' @param norm Currently only KR is supported
+normalize_hic <- function(hic_matrix,
+                          norm = "KR") {
+  assert_that(is(hic_matrix, "ht_table"))
+  norm <- match.arg(norm)
+  
+  chrom <- hic_matrix[, unique(c(chrom1, chrom2))]
+  
+  result <- map(chrom, function(chrom) {
+    hic_matrix <- hic_matrix[chrom1 == chrom & chrom2 == chrom]
+    pos_start <- hic_matrix[, min(c(pos1, pos2))]
+    
+    hictools::convert_hic_matrix(hic_matrix = hic_matrix,
+                                 chrom = chrom,
+                                 blank_value = 0) %>%
+      HiCcompare::KRnorm() %>%
+      hictools::convert_matrix_hic(
+        chrom = chrom,
+        resol = hic_resol(hic_matrix),
+        pos_start = pos_start,
+        copy_from = hic_matrix
+      )
+  }) %>%
+    data.table::rbindlist() %>%
+    ht_table(copy_from = hic_matrix)
+  
+  hic_norm(result) <- "KR"
+  return(result)
+}
