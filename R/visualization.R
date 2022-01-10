@@ -147,7 +147,14 @@ plot_hic_matrix <- function(hic,
   # Transform & scale to [0, 1]
   transcale <- function(score, transform, scale_min = 0, scale_max = 1) {
     if (transform == "log10") {
-      score <- log10(pmax(score, 1))
+      # Ensure all log(score) values are non-negative
+      # Exclude all non-positive values
+      score[score <= 0] <- NA
+      score[is.na(score)] <- NA
+      factor <- 1 / min(score, na.rm = TRUE)
+      score <- score * factor
+      score[is.na(score)] <- 1
+      score <- log10(score)
     } else if (transform != "linear") {
       stop(paste0("Invalid transform: ", transform), call. = FALSE)
     }
