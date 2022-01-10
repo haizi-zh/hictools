@@ -875,12 +875,20 @@ pearson_juicer <-
 
 #' Calculate Pearson
 #'
+#' @param method `lieberman` indicates to calculate Pearson correlation matrix
+#'   based on observed/expected values, using the method described in Lieberman
+#'   2009. `none` indicates directly calculate Pearson correlation from the Hi-C
+#'   matrix.
 #' @export
-pearson_ht <- function(hic_matrix, chrom, method = "lieberman") {
+pearson_ht <- function(hic_matrix, chrom, method = c("lieberman", "none")) {
+  method = match.arg(method)
   stopifnot(length(chrom) == 1)
   pos_start <- min(c(hic_matrix$pos1, hic_matrix$pos2))
   resol <- attr(hic_matrix, "resol")
-  oe <- oe_ht(hic_matrix, method = method)
+  if (method == "none")
+    oe <- hic_matrix
+  else
+    oe <- oe_ht(hic_matrix, method = method)
   hic_pearson <- oe %>%
     convert_hic_matrix(chrom = chrom) %>%
     cor(use = "pairwise.complete.obs") %>%
