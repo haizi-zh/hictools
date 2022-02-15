@@ -38,6 +38,9 @@
 "gc.GRCh37.100kbp"
 
 #' @rdname gc.GRCh37.100kbp
+"gc.GRCh37.50kbp"
+
+#' @rdname gc.GRCh37.100kbp
 "gc.GRCh37.250kbp"
 
 #' @rdname gc.GRCh37.100kbp
@@ -48,6 +51,9 @@
 
 #' @rdname gc.GRCh37.100kbp
 "gc.GRCh37.2500kbp"
+
+#' @rdname gc.GRCh37.100kbp
+"gc.GRCh38.50kbp"
 
 #' @rdname gc.GRCh37.100kbp
 "gc.GRCh38.100kbp"

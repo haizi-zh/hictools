@@ -53,7 +53,7 @@ calc_gc <- function(genome, interval, mask_threshold = NULL) {
 }
 
 # Generate the dataset
-gc_result <- c(100e3L, 250e3L, 500e3L, 1000e3L, 2500e3L) %>%
+gc_result <- c(100e3L, 250e3L, 500e3L, 1000e3L, 2500e3L, 50e3L) %>%
   map(function(bin_size) {
     logging::loginfo(bin_size)
     calc_gc(hs37d5,
@@ -65,7 +65,9 @@ gc.GRCh37.250kbp <- gc_result[[2]]
 gc.GRCh37.500kbp <- gc_result[[3]]
 gc.GRCh37.1000kbp <- gc_result[[4]]
 gc.GRCh37.2500kbp <- gc_result[[5]]
+gc.GRCh37.50kbp <- gc_result[[6]]
 usethis::use_data(
+  gc.GRCh37.50kbp,
   gc.GRCh37.100kbp,
   gc.GRCh37.250kbp,
   gc.GRCh37.500kbp,
@@ -74,7 +76,7 @@ usethis::use_data(
   overwrite = TRUE
 )
 
-gc_result <- c(100e3L, 250e3L, 500e3L, 1000e3L, 2500e3L) %>%
+gc_result <- c(100e3L, 250e3L, 500e3L, 1000e3L, 2500e3L, 50e3L) %>%
   map(function(bin_size) {
     logging::loginfo(bin_size)
     calc_gc(GRCh38,
@@ -86,7 +88,9 @@ gc.GRCh38.250kbp <- gc_result[[2]]
 gc.GRCh38.500kbp <- gc_result[[3]]
 gc.GRCh38.1000kbp <- gc_result[[4]]
 gc.GRCh38.2500kbp <- gc_result[[5]]
+gc.GRCh38.50kbp <- gc_result[[6]]
 usethis::use_data(
+  gc.GRCh38.50kbp,
   gc.GRCh38.100kbp,
   gc.GRCh38.250kbp,
   gc.GRCh38.500kbp,
