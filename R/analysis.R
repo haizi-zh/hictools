@@ -1089,7 +1089,7 @@ comp_correlation <-
                   chrom = chroms) %>%
         pmap_dfr(function(method, chrom) {
           x <- x[seqnames(x) == chrom]
-          y <- y[seqnames(x) == chrom]
+          y <- y[seqnames(y) == chrom]
           
           tibble(chrom = chrom,
                  method = method,
