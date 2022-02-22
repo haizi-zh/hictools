@@ -337,7 +337,7 @@ get_compartment.ht_table <- function(hic_matrix,
                                      java = "java",
                                      ...) {
   assert_that(
-    hic_type(hic_matrix) %in% c("observed", "cofrag"),
+    hic_type(hic_matrix) %in% c("observed", "cofrag") || (hic_type(hic_matrix) == "oe" && oe == "as-is"),
     msg = paste0("Incorrect HiC data type: ", hic_type(hic_matrix))
   )
   method <- match.arg(method)
