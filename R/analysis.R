@@ -566,6 +566,7 @@ get_compartment.character <- function(hic_matrix,
 
 #' Compute compartment scores using Juicer tools, from an existing .hic file
 #' 
+#' @param ev Which eigenvector to return
 #' @param bpparam BiocParallelParam for parallel operation
 compartment_juicer_file <- function(hic_file,
                                     juicertools = get_juicer_tools(),
@@ -574,8 +575,10 @@ compartment_juicer_file <- function(hic_file,
                                     chrom = NULL,
                                     resol = NULL,
                                     genome = NULL,
+                                    ev = 1L,
                                     bpparam = BiocParallel::bpparam("SerialParam")) {
-  assert_that(grepl(pattern = "\\.hic$", x = hic_file) && assertthat::is.readable(hic_file))
+  assert_that(grepl(pattern = "\\.hic$", x = hic_file) &&
+                assertthat::is.readable(hic_file))
   assert_that(is_scalar_character(java))
   assert_that(is_scalar_character(juicertools))
   norm <- match.arg(norm)
@@ -583,34 +586,69 @@ compartment_juicer_file <- function(hic_file,
   assert_that(length(chrom) >= 1)
   resol <- as.integer(resol)
   assert_that(is_valid_resol(resol) && resol >= 100e3L)
-  assert_that(is_null(genome) || (is_scalar_character(genome) && !is_null(bedtorch::get_seqinfo(genome))))
+  assert_that(is_null(genome) ||
+                (
+                  is_scalar_character(genome) &&
+                    !is_null(bedtorch::get_seqinfo(genome))
+                ))
+  assert_that(all(is_wholenumber(ev)), all(ev >= 1))
   
-  comps <- BiocParallel::bplapply(chrom, BPPARAM = bpparam, FUN = function(chrom) {
-    ev_file <- tempfile()
-    on.exit(unlink(ev_file), add = TRUE)
-    cmd <-
-      str_interp(
-        "${java} -jar ${juicertools} eigenvector ${norm} ${hic_file} ${chrom} BP ${resol} ${ev_file}"
-      )
-    logging::loginfo(cmd)
-    retcode <- system(cmd)
-    assertthat::assert_that(retcode == 0,
-                            msg = str_interp("Error in compartment calculation , RET: ${retcode}, CMD: ${cmd}"))
-    
-    comps <- data.table::fread(ev_file, col.names = "score", na.strings = c("", "NA", "NaN"))
-    comps[, {
-      start <- as.integer(0:(length(score) - 1) * resol)
-      end <- as.integer(start + resol)
-      list(chrom = chrom, start = start, end = end,
-           score = ifelse(is.infinite(score) | is.nan(score), NA, score))
-    }]
-  }) %>%
+  comps <-
+    BiocParallel::bplapply(
+      chrom,
+      BPPARAM = bpparam,
+      FUN = function(chrom) {
+        ev_file <- tempfile()
+        on.exit(unlink(ev_file), add = TRUE)
+        ev_arg <- paste(ev, collapse = ",")
+        cmd <-
+          str_interp(
+            "${java} -jar ${juicertools} eigenvector --ev ${ev_arg} ${norm} ${hic_file} ${chrom} BP ${resol} ${ev_file}"
+          )
+        logging::loginfo(cmd)
+        retcode <- system(cmd)
+        assertthat::assert_that(retcode == 0,
+                                msg = str_interp(
+                                  "Error in compartment calculation , RET: ${retcode}, CMD: ${cmd}"
+                                ))
+        
+        # Column names: score if only one eigenvector is calculated
+        # PC1, PC2, ... if multiple eigenvectors are calculated
+        if (length(ev) == 1)
+          ev_col_names <- "score"
+        else
+          ev_col_names <- paste("PC", ev, sep = "")
+        
+        ev_output <-
+          data.table::fread(ev_file,
+                            col.names = ev_col_names,
+                            na.strings = c("", "NA", "NaN"))
+        
+        start_pos <- ev_output[, as.integer(resol * (.I - 1))]
+        end_pos <- as.integer(start_pos + resol)
+        result <- cbind(data.table::data.table(chrom = chrom,
+                                               start = start_pos,
+                                               end = end_pos),
+                        ev_output)
+        
+        # Remove NA's
+        sel_idx <- map_lgl(1:nrow(result), function(row_idx) {
+          flags <- map_lgl(ev_col_names, function(name) {
+            !is.na(result[[name]][row_idx])
+          })
+          any(flags)
+        })
+        result[sel_idx]
+      }
+    ) %>%
     data.table::rbindlist()
   
   # Need to trim to fit the genome
-  comps <- suppressWarnings(bedtorch::as.GenomicRanges(comps[!is.na(score)], genome = genome) %>% GenomicRanges::trim())
-  
-  return(comps)
+  suppressWarnings({
+    comps %>%
+      bedtorch::as.GenomicRanges(genome = genome) %>%
+      GenomicRanges::trim()
+  })
 }
 
 

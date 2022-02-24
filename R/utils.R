@@ -1,6 +1,6 @@
 #' Return the path of juicer_tools which is shipped along with hictools
 get_juicer_tools <- function() {
-  system.file("extdata", "juicer_tools_1.22.01.jar", package = "hictools")
+  system.file("extdata", "juicer_tools_2.13.07.51.jar", package = "hictools")
 }
 
 
