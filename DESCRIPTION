@@ -1,6 +1,6 @@
 Package: hictools
 Title: Home-made handy tools for Hi-C
-Version: 0.1.30
+Version: 0.1.31
 Authors@R: 
     person(given = "Haizi",
            family = "Zheng",

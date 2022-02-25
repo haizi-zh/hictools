@@ -641,8 +641,15 @@ convert_matrix_hic <- function(mat, chrom, resol, pos_start, ...) {
 #' Convert a Hi-C map to a naive matrix
 #' 
 #' @param missing_score Scores where the bin does not contain any signal.
+#' @param full_matrix Logical value indicating whether to build the matrix from
+#'   position 0
 #' @export
-convert_hic_matrix <- function(hic_matrix, chrom = NULL, missing_score = NA) {
+convert_hic_matrix <-
+  function(hic_matrix,
+           chrom = NULL,
+           missing_score = NA,
+           full_matrix = FALSE) {
+    
   if (is.null(chrom)) {
     # Infer chrom from input
     chrom <- unique(c(as.character(hic_matrix$chrom1), as.character(hic_matrix$chrom2)))
@@ -654,7 +661,10 @@ convert_hic_matrix <- function(hic_matrix, chrom = NULL, missing_score = NA) {
 
   # Single-chromosome matrix
   hic_matrix <- hic_matrix[chrom1 == chrom & chrom2 == chrom]
-  min_pos <- min(c(hic_matrix$pos1, hic_matrix$pos2))
+  if (full_matrix)
+    min_pos <- 0
+  else
+    min_pos <- min(c(hic_matrix$pos1, hic_matrix$pos2))
   max_pos <- max(c(hic_matrix$pos1, hic_matrix$pos2))
   hic_matrix[, `:=`(x = (pos1 - min_pos) %/% resol + 1,
                     y = (pos2 - min_pos) %/% resol + 1)]
